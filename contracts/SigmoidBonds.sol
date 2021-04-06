@@ -71,13 +71,12 @@ library SafeMath {
         return a % b;
     }
 }
-
 interface IERC659 {
     function totalSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
-    
+    function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function balanceOf(address account, uint256 class, uint256 nonce) external view returns (uint256);
     function getBondSymbol(uint256 class) view external returns (string memory);
     function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
@@ -95,35 +94,43 @@ interface IERC659 {
     event eventTransferBond(address _operator, address _from, address _to, uint256 class, uint256 nonce, uint256 _amount);
 }
 
-interface IsigmoidBond{
+interface IsigmoidBonds{
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
     function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
 }
 
-contract SigmoidBond is IERC659{
+contract ERC659data {
+    mapping (address => mapping( uint256 =>mapping(uint256=> uint256))) public _balances;
+    
+    mapping (uint256 => mapping(uint256 => uint256)) public _activeSupply;
+    
+    mapping (uint256 => mapping(uint256 => uint256)) public _burnedSupply;
+  
+    mapping (uint256 => mapping(uint256 => uint256)) public _redeemedSupply;
+
+    mapping (uint256 => address) public _bankAddress;
+    
+    mapping (uint256 => string) public _Symbol;
+    
+    mapping (uint256 => mapping(uint256=> mapping(uint256=> uint256))) public _info;
+
+    mapping (uint256 => uint256)  public last_bond_nonce;
+    
+    mapping (uint256 => uint256[]) public _nonceCreated;
+    
+}
+
+contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     using SafeMath for uint256;
     
     address public governance_contract;
     address public bank_contract;
     address public bond_contract;
-
     mapping (uint256 => address) public token_contract;
-    
-    mapping (address => mapping( uint256 =>mapping(uint256=> uint256))) private _balances;
-    
-    mapping (uint256 => mapping(uint256 => uint256)) private _activeSupply;
-    
-    mapping (uint256 => mapping(uint256 => uint256)) private _burnedSupply;
   
-    mapping (uint256 => mapping(uint256 => uint256)) private _redeemedSupply;
-
-    mapping (uint256 => string) private _Symbol;
     
-    mapping (uint256 => mapping(uint256=> mapping(uint256=> uint256))) public _info;
-
-    mapping (uint256 => uint256)  public last_bond_nonce;
     mapping (uint256 => uint256)  public _Fibonacci_number;
     mapping (uint256 => uint256)  public _Fibonacci_epoch;
     mapping (uint256 => uint256)  public _genesis_nonce_time;
@@ -138,26 +145,30 @@ contract SigmoidBond is IERC659{
         
     }
     
-     function setGovernanceContract(address governance_address) public returns (bool) {
+     function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         governance_contract = governance_address;
         return(true);
     }
     
-    function setBankContract(address bank_address) public returns (bool) {
+    function setBankContract(address bank_address) public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         bank_contract = bank_address;
         return(true);
     }
       
-    function setTokenContract(uint256 class, address contract_address) public returns (bool) {
+    function setTokenContract(uint256 class, address contract_address) public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         token_contract[class] = contract_address;
         return(true);
     }
-   
     
-    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)public returns (bool) {
+    function getNonceCreated(uint256 class) public override view returns (uint256[] memory){
+        return _nonceCreated[class];
+    }
+
+    
+    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         _Symbol[class]=bond_symbol;
         _Fibonacci_number[class]=Fibonacci_number;
@@ -195,7 +206,7 @@ contract SigmoidBond is IERC659{
         return _Symbol[class]; 
     } 
     
-    function getBondInfo(uint256 class, uint256 nonce) public view override returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6) {
+    function getBondInfo(uint256 class, uint256 nonce) public override view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6) {
         BondSymbol=_Symbol[class];
         timestamp=_info[class][nonce][1];
         info2=_info[class][nonce][2];
@@ -240,8 +251,10 @@ contract SigmoidBond is IERC659{
          
     function _createBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
     
-        if(last_bond_nonce[class]<nonce)
-        {last_bond_nonce[class]=nonce;}
+        if(last_bond_nonce[class]<nonce){
+            last_bond_nonce[class]=nonce;
+        }
+        _nonceCreated[class].push(nonce);
         _info[class][nonce][1]=_genesis_nonce_time[class] + (nonce) * _Fibonacci_epoch[class];
         _balances[_to][class][nonce]+=_amount;
         _activeSupply[class][nonce]+=_amount;
@@ -257,7 +270,6 @@ contract SigmoidBond is IERC659{
             }
             
         else{
-            
             _balances[_to][class][nonce]+=_amount;
             _activeSupply[class][nonce]+=_amount;
             emit eventIssueBond(msg.sender, _to, class,last_bond_nonce[class], _amount);

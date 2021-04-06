@@ -382,7 +382,7 @@ contract SGM is ERC20{
     uint8 private _decimals;
     address public bank_contract;
     address public dev_address;
-    address public governance_contract_address;
+    address public governance_contract;
     /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
      * these values are immutable: they can only be set once during
@@ -394,7 +394,7 @@ contract SGM is ERC20{
         _decimals = 18;
         dev_address = msg.sender;
         _maxiumuSupply = 0;
-        governance_contract_address = governance_address;
+        governance_contract = governance_address;
     }
     
     function maxiumuSupply() public view returns (uint256) {
@@ -402,20 +402,20 @@ contract SGM is ERC20{
     }
 
     function setGovernanceContract(address governance_address) public returns (bool) {
-        require(msg.sender == governance_contract_address);
-        governance_contract_address = governance_address;
+        require(msg.sender == governance_contract);
+        governance_contract = governance_address;
         return(true);
         
     }
 
     function setBankContract(address bank_addres) public returns (bool) {
-        require(msg.sender == governance_contract_address);
+        require(msg.sender == governance_contract);
         bank_contract = bank_addres;
         return(true);
     }
     
     function mint(address _to, uint256 _amount) public returns (bool) {
-        require(msg.sender==bank_contract);
+        require(msg.sender==bank_contract || msg.sender==governance_contract);
         _mint(_to, _amount);
         return(true);
     }

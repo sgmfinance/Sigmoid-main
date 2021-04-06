@@ -74,20 +74,19 @@ library SafeMath {
 }
 
 interface IERC659 {
-    function setBond(uint256 class, address  bank_contract, uint256 Fibonacci_number, uint256 Fibonacci_epoch) external returns (bool);
     function totalSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
-    
+    function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function balanceOf(address account, uint256 class, uint256 nonce) external view returns (uint256);
     function getBondSymbol(uint256 class) view external returns (string memory);
-    function getBondInfo(uint256 class, uint256 nonce) external view returns (uint256 timestamp,uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
+    function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
     function bondIsRedeemable(uint256 class, uint256 nonce) external view returns (bool);
     
  
     function issueBond(address _to, uint256  class, uint256 _amount) external returns(bool);
-    function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata  _amount) external returns(bool);
+    function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     function transferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     function burnBond(address _from, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     
@@ -96,6 +95,8 @@ interface IERC659 {
     event eventBurnBond(address _operator, address _from, uint256 class, uint256 nonce, uint256 _amount);
     event eventTransferBond(address _operator, address _from, address _to, uint256 class, uint256 nonce, uint256 _amount);
 }
+
+
 
 interface IERC20 {
     /**
@@ -243,7 +244,7 @@ interface ISigmoidTokens {
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
 
-interface IsigmoidBond{
+interface IsigmoidBonds{
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
@@ -254,7 +255,7 @@ interface ISigmoidBank{
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setBondContract(address bond_address) external returns (bool);
-    function setTokenContract(address bond_address) external returns (bool);
+    function setTokenContract(uint256 token_class, address token_address) external returns (bool);
     function initializeBankContract() external returns (bool);
     
     function addStablecoinToList(address contract_address) external returns (bool);
@@ -355,21 +356,9 @@ contract SigmaGovernance{
 
     }
     
-    //function excuteProposal(uint256 poposal_class, uint256 proposal_nonce)
+
     
-    // function updateSASHContract(uint256 poposal_class, uint256 proposal_nonce) public returns(bool){
-        
-       
-        
-    // }
-    
-    
-    // function updateSGMContract() public returns(bool){
-       
-        
-    // }
-    
-    
+  
     function firstTimeSetContract(address SASH_address,address SGM_address, address bank_address,address bond_address) public returns(bool){
         require(initialized == false);
         require(msg.sender == dev_address);
@@ -390,16 +379,11 @@ contract SigmaGovernance{
         require(bond_contract != address(0));
         
       
-        IsigmoidBond(bond_contract).setBankContract(bank_contract);
+        IsigmoidBonds(bond_contract).setBankContract(bank_contract);
         ISigmoidTokens(SASH_contract).setBankContract(bank_contract);
         ISigmoidTokens(SGM_contract).setBankContract(bank_contract);
                   
-        ISigmoidBank(bond_contract).setBondContract(bond_contract);
-        
-        ISigmoidBank(bank_contract).setGovernanceContract(address(this));
-        IsigmoidBond(bond_contract).setGovernanceContract(address(this));
-        ISigmoidTokens(SASH_contract).setGovernanceContract(address(this));
-        ISigmoidTokens(SGM_contract).setGovernanceContract(address(this));    
+        ISigmoidBank(bank_contract).setBondContract(bond_contract);
         ISigmoidBank(bank_contract).initializeBankContract();
         
         initialized = true;
@@ -408,28 +392,14 @@ contract SigmaGovernance{
     
     } 
     
-    //function permissions(uint256 poposal_class, uint256 proposal_nonce)
-    
-      
-    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) public returns(bool){
-        require(poposal_class == 1);
-        require(checkProposal( poposal_class,  proposal_nonce) == true);
-        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
-        require(ISigmoidBank(bank_contract).migratorLP(_to, tokenA, tokenB));
-        
-        return(true);
-    }  
-    
     function updateBankContract(uint256 poposal_class, uint256 proposal_nonce, address new_bank_address) public returns(bool){
-        require(poposal_class == 1);
+        require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
-        
-        
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
         ISigmoidBank(bank_contract).setBankContract(new_bank_address);
-        IsigmoidBond(bond_contract).setBankContract(new_bank_address);
+        IsigmoidBonds(bond_contract).setBankContract(new_bank_address);
         ISigmoidTokens(SASH_contract).setBankContract(new_bank_address);
         ISigmoidTokens(SGM_contract).setBankContract(new_bank_address);
         return(true);
@@ -438,7 +408,7 @@ contract SigmaGovernance{
 
     
     function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) public returns(bool){
-        require(poposal_class == 1);
+        require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
@@ -449,19 +419,66 @@ contract SigmaGovernance{
     }
     
     function updateGovernanceContract(uint256 poposal_class, uint256 proposal_nonce, address new_governance_address) public returns(bool){
-        require(poposal_class == 1);
+        require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
         ISigmoidBank(bank_contract).setGovernanceContract(new_governance_address);
-        IsigmoidBond(bond_contract).setGovernanceContract(new_governance_address);
+        IsigmoidBonds(bond_contract).setGovernanceContract(new_governance_address);
         ISigmoidTokens(SASH_contract).setGovernanceContract(new_governance_address);
         ISigmoidTokens(SGM_contract).setGovernanceContract(new_governance_address);        
   
         return(true);
   
     }
+       
+    function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) public returns(bool){
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        ISigmoidBank(bank_contract).setTokenContract(new_token_class, new_token_address);
+        IsigmoidBonds(bond_contract).setTokenContract(new_token_class, new_token_address);
+        
+        return(true);
+        
+    }
+  
+  
+    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) public returns(bool){
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        require(ISigmoidBank(bank_contract).migratorLP(_to, tokenA, tokenB));
+        
+        return(true);
+    }  
     
+    function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) public returns(bool){
+        require(poposal_class <= 2);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        require(IERC20(_token).transfer(_to, _amount));
+        
+        return(true);
+        
+    }
+    
+    function mintTokenFromCommunityTreasury(uint256 poposal_class, uint256 proposal_nonce, address SASH_to, uint256 SASH_amount, address SGM_to, uint256 SGM_amount) public returns(bool){
+        require(poposal_class <= 2);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        ISigmoidTokens(SASH_contract).mint(SASH_to, SASH_amount);
+        ISigmoidTokens(SGM_contract).mint(SGM_to, SGM_amount);
+        return(true);
+
+    }
+        
     
 }

@@ -247,7 +247,7 @@ interface ISigmoidBank{
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setBondContract(address bond_address) external returns (bool);
-    function setTokenContract(address bond_address) external returns (bool);
+    function setTokenContract(uint256 token_class, address token_address) external returns (bool);
     function initializeBankContract() external returns (bool);
     function addStablecoinToList(address contract_address) external returns (bool);
     function checkIntheList(address contract_address) view external returns (bool);
