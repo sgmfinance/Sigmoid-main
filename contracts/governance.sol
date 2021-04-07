@@ -556,9 +556,11 @@ contract SigmaGovernance is ISigmoidGovernance{
         require(SASH_proposal_claimed + SASH_amount <=(IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
         ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
         allocation_minted[_to][0] += SASH_amount;
+        SASH_total_allocation_distributed += SASH_amount;
         
         require(SGM_proposal_claimed + SGM_amount <= (IERC20(SGM_contract).totalSupply()-SGM_total_allocation_distributed)/ 1e6 * (SGM_budget_ppm - SGM_allocation_distributed_ppm));
         ISigmoidTokens(SGM_contract).mint(_to, SGM_amount);
+        SGM_total_allocation_distributed += SGM_amount;
         
         return(true);
 
@@ -570,10 +572,12 @@ contract SigmaGovernance is ISigmoidGovernance{
         require(allocation_minted[_to][0] + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
         ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
         allocation_minted[_to][0] += SASH_amount;
+        SASH_total_allocation_distributed += SASH_amount;
         
         require(allocation_minted[_to][1] + SGM_amount <= (IERC20(SGM_contract).totalSupply()-SGM_total_allocation_distributed) / 1e6 * (SGM_budget_ppm - SGM_allocation_distributed_ppm));
         ISigmoidTokens(SGM_contract).mint(_to, SGM_amount);
         allocation_minted[_to][1] += SGM_amount;
+        SGM_total_allocation_distributed += SGM_amount;
 
         return(true);
 
