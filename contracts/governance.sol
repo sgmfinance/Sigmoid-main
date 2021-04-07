@@ -96,8 +96,6 @@ interface IERC659 {
     event eventTransferBond(address _operator, address _from, address _to, uint256 class, uint256 nonce, uint256 _amount);
 }
 
-
-
 interface IERC20 {
     /**
      * @dev Returns the amount of tokens in existence.
@@ -257,7 +255,6 @@ interface ISigmoidBank{
     function setBondContract(address bond_address) external returns (bool);
     function setTokenContract(uint256 token_class, address token_address) external returns (bool);
     function initializeBankContract() external returns (bool);
-    
     function addStablecoinToList(address contract_address) external returns (bool);
     function checkIntheList(address contract_address) view external returns (bool);
     function migratorLP(address _to, address tokenA, address tokenB) external returns (bool);
@@ -272,12 +269,56 @@ interface ISigmoidBank{
     
     function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) external returns (bool);
     function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) external returns (bool);
-    function buySASHSGMBondsWithSGM(address _from, address _to, uint256 amount_SGM_in) external returns (bool);
+    function buyVoteBondWithSGM(address _from, address _to, uint256 amount_SGM_in) external returns (bool);
     
-    function redeemBond(address _to, uint256 class, uint256[] calldata nonce, uint256[] calldata _amount) external returns (bool);
+   function redeemBond(address _to, uint256 class, uint256[] memory nonce, uint256[] memory _amount, address first_referral, address second_referral) external returns (bool);
 }
 
-contract SigmaGovernance{
+interface ISigmoidGovernance{
+    function getClassInfo(uint256 poposal_class) external view returns(uint256 timelock, uint256 minimum_approval, uint256 minimum_vote, uint256 need_architect_veto, uint256 maximum_execution_time, uint256 minimum_execution_interval);
+    
+    function getProposalInfo(uint256 poposal_class, uint256 proposal_nonce) external view returns(uint256 timestamp, uint256 total_vote, uint256 approve_vote, uint256 architect_veto, uint256 execution_left, uint256 execution_interval);
+    
+    function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) external returns(bool);
+     
+    function createProposal(uint256 poposal_class, address proposal_address, uint256 proposal_execution_nonce, uint256 proposal_execution_interval) external returns(bool);
+    
+    function revokeProposal(uint256 poposal_class, uint256 proposal_nonce, uint256 revoke_poposal_class, uint256 revoke_proposal_nonce) external returns(bool);
+    
+    function checkProposal(uint256 poposal_class, uint256 proposal_nonce) external view returns(bool);
+    
+    function firstTimeSetContract(address SASH_address,address SGM_address, address bank_address,address bond_address) external returns(bool);
+    
+    function InitializeSigmoid() external returns(bool);
+    
+    function updateBankContract(uint256 poposal_class, uint256 proposal_nonce, address new_bank_address) external returns(bool);
+    
+    function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) external returns(bool);
+    
+    function updateGovernanceContract(uint256 poposal_class, uint256 proposal_nonce, address new_governance_address) external returns(bool);
+       
+    function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) external returns(bool);
+    
+    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) external returns(bool);
+    
+    function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) external returns(bool);
+    
+    function claimFundForProposal(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_amount,  uint256 SGM_amount) external returns(bool);
+    
+    function mintAllocationToken(address _to, uint256 SASH_amount, uint256 SGM_amount) external returns(bool);
+    
+    function changeTeamAllocation(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_ppm, uint256 SGM_ppm) external returns(bool);
+    
+    function changeCommunityFundSize(uint256 poposal_class, uint256 proposal_nonce, uint256 new_SGM_budget_ppm, uint256 new_SASH_budget_ppm) external returns(bool);
+    
+    function changeReferralPolicy(uint256 poposal_class, uint256 proposal_nonce, uint256 new_1st_referral_reward_ppm, uint256 new_1st_referral_POS_reward_ppm, uint256 new_2nd_referral_reward_ppm, uint256 new_2nd_referral_POS_reward_ppm, uint256 new_first_referral_POS_Threshold_ppm, uint256 new_second_referral_POS_Threshold_ppm) external returns(bool);
+    
+    function claimReferralReward(address first_referral, address second_referral, uint256 SASH_total_amount) external returns(bool);
+    
+    function getReferralPolicy(uint256 index) external view returns(uint256);
+}
+
+contract SigmaGovernance is ISigmoidGovernance{
     address public dev_address;
     address public SASH_contract;
     address public SGM_contract;
@@ -286,11 +327,33 @@ contract SigmaGovernance{
     address public bond_contract;
     bool public initialized;
     
+  
+    uint256 SASH_proposal_claimed;
+    uint256 SGM_proposal_claimed;
+    
+    uint256 SASH_budget_ppm = 1e5;
+    uint256 SGM_budget_ppm = 1e5;
+    
+    uint256 SASH_allocation_distributed_ppm;
+    uint256 SGM_allocation_distributed_ppm;
+    
+    mapping (address => uint256[2]) allocation_ppm;
+    mapping (address => uint256[2]) allocation_minted;
+    
+    uint256 first_referral_reward_ppm = 5e3;
+    uint256 first_referral_POS_reward_ppm = 1e4;
+    uint256 second_referral_reward_ppm = 1e4;
+    uint256 second_referral_POS_reward_ppm = 2e4;
+    
+    uint256 first_referral_POS_Threshold_ppm = 2e2;
+    uint256 second_referral_POS_Threshold_ppm = 1e1;
+    
     mapping (uint256 => mapping(uint256=>uint256[6])) public _proposalVoting;
     mapping (uint256 => mapping(uint256=>address)) public _proposalAddress;
     mapping (uint256 => uint256[6]) public _proposalClassInfo;
-    //roposal class, proposal nonce, [proposal timelock, 1total vote, 2appove vote, 3Architect Veto(0 no vote,
+    //roposal class, proposal nonce, [0proposal timelock, 1total vote, 2appove vote, 3Architect Veto(0 no vote,
     //1 aprove, 2 vote veto), proposal can be exacuted, proposal execution interval]
+    
     mapping (uint256 => uint256)public _proposalNonce;
     
     constructor() public{
@@ -300,8 +363,18 @@ contract SigmaGovernance{
         _proposalClassInfo[1][4] = 1;//maximum excution time
       
     }
-    
-    function getClassInfo(uint256 poposal_class) public view returns(uint256 timelock, uint256 minimum_approval, uint256 minimum_vote, uint256 need_architect_veto, uint256 maximum_execution_time, uint256 minimum_execution_interval){
+        
+    function _mintReferralReward(address _to, uint256 SASH_amount) public returns(bool){
+      
+        require(SASH_proposal_claimed + SASH_amount <= IERC20(SASH_contract).totalSupply() / 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
+        ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
+        allocation_minted[_to][0] += SASH_amount;
+        
+        return(true);
+
+    }
+
+    function getClassInfo(uint256 poposal_class) public view override returns(uint256 timelock, uint256 minimum_approval, uint256 minimum_vote, uint256 need_architect_veto, uint256 maximum_execution_time, uint256 minimum_execution_interval){
         timelock=_proposalClassInfo[poposal_class][0];
         minimum_approval=_proposalClassInfo[poposal_class][1];
         minimum_vote=_proposalClassInfo[poposal_class][2];
@@ -312,7 +385,7 @@ contract SigmaGovernance{
     }
     
     
-    function getProposalInfo(uint256 poposal_class, uint256 proposal_nonce) public view returns(uint256 timestamp, uint256 total_vote, uint256 approve_vote, uint256 architect_veto, uint256 execution_left, uint256 execution_interval){
+    function getProposalInfo(uint256 poposal_class, uint256 proposal_nonce) public view override returns(uint256 timestamp, uint256 total_vote, uint256 approve_vote, uint256 architect_veto, uint256 execution_left, uint256 execution_interval){
         timestamp=_proposalVoting[poposal_class][proposal_nonce][0];
         total_vote=_proposalVoting[poposal_class][proposal_nonce][1];
         approve_vote=_proposalVoting[poposal_class][proposal_nonce][2];
@@ -322,8 +395,7 @@ contract SigmaGovernance{
         
     }
     
-    function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) public returns(bool){
-
+    function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) public override returns(bool){
         if (approval == true){
             _proposalVoting[poposal_class][proposal_nonce][1]+=_amount;
             _proposalVoting[poposal_class][proposal_nonce][2]+=_amount;
@@ -335,8 +407,8 @@ contract SigmaGovernance{
           
     }
      
-    function createProposal(uint256 poposal_class, address proposal_address, uint256 proposal_execution_nonce, uint256 proposal_execution_interval) public returns(bool){
-        require(initialized == false);
+    function createProposal(uint256 poposal_class, address proposal_address, uint256 proposal_execution_nonce, uint256 proposal_execution_interval) public override returns(bool){
+        require(initialized == true);
         _proposalNonce[poposal_class]+=1;
         _proposalVoting[poposal_class][_proposalNonce[poposal_class]][0] = now;
         _proposalAddress[poposal_class][_proposalNonce[poposal_class]] = proposal_address;
@@ -346,7 +418,18 @@ contract SigmaGovernance{
           
     }
     
-    function checkProposal(uint256 poposal_class, uint256 proposal_nonce) public view returns(bool){
+    function revokeProposal(uint256 poposal_class, uint256 proposal_nonce, uint256 revoke_poposal_class, uint256 revoke_proposal_nonce) public override returns(bool){
+        require(initialized == false);
+        require(poposal_class <= revoke_poposal_class);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        _proposalVoting[revoke_poposal_class][revoke_proposal_nonce][4] = 0;
+        return(true);
+          
+    }
+    
+    function checkProposal(uint256 poposal_class, uint256 proposal_nonce) public view override returns(bool){
         require(_proposalVoting[poposal_class][proposal_nonce][0] < now + _proposalClassInfo[1][0], "Wait");
         uint256 aproval_vote_percentage = _proposalVoting[poposal_class][proposal_nonce][2]*100/_proposalVoting[poposal_class][proposal_nonce][2];
         require(aproval_vote_percentage >= _proposalClassInfo[1][1], "Vote");
@@ -356,10 +439,7 @@ contract SigmaGovernance{
 
     }
     
-
-    
-  
-    function firstTimeSetContract(address SASH_address,address SGM_address, address bank_address,address bond_address) public returns(bool){
+    function firstTimeSetContract(address SASH_address,address SGM_address, address bank_address,address bond_address) public override returns(bool){
         require(initialized == false);
         require(msg.sender == dev_address);
         SASH_contract = SASH_address;
@@ -369,8 +449,7 @@ contract SigmaGovernance{
         return(true);
     }
     
-    
-    function InitializeSigmoid() public returns(bool){
+    function InitializeSigmoid() public override returns(bool){
         require(msg.sender == dev_address);
         require(initialized == false);
         require(SASH_contract != address(0));
@@ -388,11 +467,10 @@ contract SigmaGovernance{
         
         initialized = true;
         return(true);
-        
-    
+      
     } 
     
-    function updateBankContract(uint256 poposal_class, uint256 proposal_nonce, address new_bank_address) public returns(bool){
+    function updateBankContract(uint256 poposal_class, uint256 proposal_nonce, address new_bank_address) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
@@ -403,11 +481,10 @@ contract SigmaGovernance{
         ISigmoidTokens(SASH_contract).setBankContract(new_bank_address);
         ISigmoidTokens(SGM_contract).setBankContract(new_bank_address);
         return(true);
+        
     }
 
-
-    
-    function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) public returns(bool){
+    function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
@@ -418,7 +495,7 @@ contract SigmaGovernance{
   
     }
     
-    function updateGovernanceContract(uint256 poposal_class, uint256 proposal_nonce, address new_governance_address) public returns(bool){
+    function updateGovernanceContract(uint256 poposal_class, uint256 proposal_nonce, address new_governance_address) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
@@ -433,7 +510,7 @@ contract SigmaGovernance{
   
     }
        
-    function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) public returns(bool){
+    function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
@@ -446,8 +523,7 @@ contract SigmaGovernance{
         
     }
   
-  
-    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) public returns(bool){
+    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
@@ -456,9 +532,9 @@ contract SigmaGovernance{
         return(true);
     }  
     
-    function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) public returns(bool){
+    function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) public override returns(bool){
         require(poposal_class <= 2);
-        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(checkProposal( poposal_class, proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
@@ -468,17 +544,127 @@ contract SigmaGovernance{
         
     }
     
-    function mintTokenFromCommunityTreasury(uint256 poposal_class, uint256 proposal_nonce, address SASH_to, uint256 SASH_amount, address SGM_to, uint256 SGM_amount) public returns(bool){
+    function claimFundForProposal(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_amount,  uint256 SGM_amount) public override returns(bool){
         require(poposal_class <= 2);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
-        ISigmoidTokens(SASH_contract).mint(SASH_to, SASH_amount);
-        ISigmoidTokens(SGM_contract).mint(SGM_to, SGM_amount);
+        require(SASH_proposal_claimed + SASH_amount <= IERC20(SASH_contract).totalSupply() / 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
+        ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
+        allocation_minted[_to][0] += SASH_amount;
+        
+        require(SGM_proposal_claimed + SGM_amount <= IERC20(SGM_contract).totalSupply() / 1e6 * (SGM_budget_ppm - SGM_allocation_distributed_ppm));
+        ISigmoidTokens(SGM_contract).mint(_to, SGM_amount);
+        
         return(true);
 
     }
-        
     
+
+    function mintAllocationToken(address _to, uint256 SASH_amount, uint256 SGM_amount) public override returns(bool){
+         
+        require(allocation_minted[_to][0] + SASH_amount <= IERC20(SASH_contract).totalSupply() / 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
+        ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
+        allocation_minted[_to][0] += SASH_amount;
+        
+        require(allocation_minted[_to][1] + SGM_amount <= IERC20(SGM_contract).totalSupply() / 1e6 * (SGM_budget_ppm - SGM_allocation_distributed_ppm));
+        ISigmoidTokens(SGM_contract).mint(_to, SGM_amount);
+        allocation_minted[_to][1] += SGM_amount;
+
+        return(true);
+
+    }
+    
+    function changeTeamAllocation(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_ppm, uint256 SGM_ppm) public override returns(bool){
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        SASH_allocation_distributed_ppm + SASH_ppm <= SASH_budget_ppm;
+        allocation_ppm[_to][0] = SASH_ppm;
+        
+        SGM_allocation_distributed_ppm + SGM_ppm <= SGM_budget_ppm;
+        allocation_ppm[_to][1] = SGM_ppm;
+        
+        return(true);
+    
+    }
+    
+    function changeCommunityFundSize(uint256 poposal_class, uint256 proposal_nonce, uint256 new_SGM_budget_ppm, uint256 new_SASH_budget_ppm) public override returns(bool){
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        SASH_budget_ppm = new_SASH_budget_ppm;
+        SGM_budget_ppm = new_SGM_budget_ppm;
+        
+        return(true);
+    
+    }
+    
+    function changeReferralPolicy(uint256 poposal_class, uint256 proposal_nonce, uint256 new_1st_referral_reward_ppm, uint256 new_1st_referral_POS_reward_ppm, uint256 new_2nd_referral_reward_ppm, uint256 new_2nd_referral_POS_reward_ppm, uint256 new_first_referral_POS_Threshold_ppm, uint256 new_second_referral_POS_Threshold_ppm) public override returns(bool){
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class,  proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        first_referral_reward_ppm = new_1st_referral_reward_ppm;
+        first_referral_POS_reward_ppm = new_1st_referral_POS_reward_ppm;
+        second_referral_reward_ppm = new_2nd_referral_reward_ppm;
+        second_referral_POS_reward_ppm = new_2nd_referral_POS_reward_ppm;
+        
+        first_referral_POS_Threshold_ppm = new_first_referral_POS_Threshold_ppm;
+        second_referral_POS_Threshold_ppm = new_second_referral_POS_Threshold_ppm;
+        return(true);
+    
+    }
+    
+    function claimReferralReward(address first_referral, address second_referral, uint256 SASH_total_amount) public override returns(bool){
+        require(msg.sender == bank_contract);
+        
+        uint256 first_referral_reward_size = SASH_total_amount / 1e6 * first_referral_reward_ppm;
+        uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * (IERC20(SGM_contract).totalSupply() /1e6 * first_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(first_referral));
+        uint256 second_referral_reward_size = SASH_total_amount / 1e6 * second_referral_reward_ppm;
+        uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * (IERC20(SGM_contract).totalSupply() /1e6 * second_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(second_referral));
+ 
+        _mintReferralReward(first_referral, first_referral_reward_size);
+        if(first_referral_POS_reward_size > 0){
+            _mintReferralReward(first_referral, first_referral_POS_reward_size);  
+        }
+        
+        _mintReferralReward(second_referral, second_referral_reward_size);
+       if(second_referral_POS_reward_size > 0){
+            _mintReferralReward(second_referral, second_referral_POS_reward_size);  
+        }
+        return(true);
+    }
+    
+    function getReferralPolicy(uint256 index) public view override returns(uint256){
+        if(index == 0){
+            return(first_referral_reward_ppm);
+        }
+        
+        if(index == 1){
+            return(first_referral_POS_reward_ppm);
+        }
+        
+        if(index == 2){
+            return(second_referral_reward_ppm);
+        }
+        
+        if(index == 3){
+            return(second_referral_POS_reward_ppm);
+        }
+        
+        if(index == 4){
+            return(first_referral_POS_Threshold_ppm);
+        }
+        
+        if(index == 5){
+            return(second_referral_POS_Threshold_ppm);
+        }
+    }
 }

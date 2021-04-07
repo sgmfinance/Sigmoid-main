@@ -71,6 +71,7 @@ library SafeMath {
         return a % b;
     }
 }
+
 interface IERC659 {
     function totalSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);

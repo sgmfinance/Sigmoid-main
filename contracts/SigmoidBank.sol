@@ -74,20 +74,19 @@ library SafeMath {
 }
 
 interface IERC659 {
-    function setBond(uint256 class, address  bank_contract, uint256 Fibonacci_number, uint256 Fibonacci_epoch) external returns (bool);
     function totalSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
-    
+    function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function balanceOf(address account, uint256 class, uint256 nonce) external view returns (uint256);
     function getBondSymbol(uint256 class) view external returns (string memory);
-    function getBondInfo(uint256 class, uint256 nonce) external view returns (uint256 timestamp,uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
+    function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
     function bondIsRedeemable(uint256 class, uint256 nonce) external view returns (bool);
     
  
     function issueBond(address _to, uint256  class, uint256 _amount) external returns(bool);
-    function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata  _amount) external returns(bool);
+    function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     function transferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     function burnBond(address _from, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external returns(bool);
     
@@ -243,6 +242,57 @@ interface ISigmoidTokens {
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
 
+interface IsigmoidBonds{
+    function setGovernanceContract(address governance_address) external returns (bool);
+    function setBankContract(address bank_address) external returns (bool);
+    function setTokenContract(uint256 class, address contract_address) external returns (bool);
+    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
+}
+
+interface ISigmoidGovernance{
+    function getClassInfo(uint256 poposal_class) external view returns(uint256 timelock, uint256 minimum_approval, uint256 minimum_vote, uint256 need_architect_veto, uint256 maximum_execution_time, uint256 minimum_execution_interval);
+    
+    function getProposalInfo(uint256 poposal_class, uint256 proposal_nonce) external view returns(uint256 timestamp, uint256 total_vote, uint256 approve_vote, uint256 architect_veto, uint256 execution_left, uint256 execution_interval);
+    
+    function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) external returns(bool);
+     
+    function createProposal(uint256 poposal_class, address proposal_address, uint256 proposal_execution_nonce, uint256 proposal_execution_interval) external returns(bool);
+    
+    function revokeProposal(uint256 poposal_class, uint256 proposal_nonce, uint256 revoke_poposal_class, uint256 revoke_proposal_nonce) external returns(bool);
+    
+    function checkProposal(uint256 poposal_class, uint256 proposal_nonce) external view returns(bool);
+    
+    function firstTimeSetContract(address SASH_address,address SGM_address, address bank_address,address bond_address) external returns(bool);
+    
+    function InitializeSigmoid() external returns(bool);
+    
+    function updateBankContract(uint256 poposal_class, uint256 proposal_nonce, address new_bank_address) external returns(bool);
+    
+    function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) external returns(bool);
+    
+    function updateGovernanceContract(uint256 poposal_class, uint256 proposal_nonce, address new_governance_address) external returns(bool);
+       
+    function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) external returns(bool);
+    
+    function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) external returns(bool);
+    
+    function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) external returns(bool);
+    
+    function claimFundForProposal(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_amount,  uint256 SGM_amount) external returns(bool);
+    
+    function mintAllocationToken(address _to, uint256 SASH_amount, uint256 SGM_amount) external returns(bool);
+    
+    function changeTeamAllocation(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_ppm, uint256 SGM_ppm) external returns(bool);
+    
+    function changeCommunityFundSize(uint256 poposal_class, uint256 proposal_nonce, uint256 new_SGM_budget_ppm, uint256 new_SASH_budget_ppm) external returns(bool);
+    
+    function changeReferralPolicy(uint256 poposal_class, uint256 proposal_nonce, uint256 new_1st_referral_reward_ppm, uint256 new_1st_referral_POS_reward_ppm, uint256 new_2nd_referral_reward_ppm, uint256 new_2nd_referral_POS_reward_ppm, uint256 new_first_referral_POS_Threshold_ppm, uint256 new_second_referral_POS_Threshold_ppm) external returns(bool);
+    
+    function claimReferralReward(address first_referral, address second_referral, uint256 SASH_total_amount) external returns(bool);
+    
+    function getReferralPolicy(uint256 index) external view returns(uint256);
+}
+
 interface ISigmoidBank{
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
@@ -263,12 +313,12 @@ interface ISigmoidBank{
     
     function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) external returns (bool);
     function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) external returns (bool);
-    function buySASHSGMBondsWithSGM(address _from, address _to, uint256 amount_SGM_in) external returns (bool);
+    function buyVoteBondWithSGM(address _from, address _to, uint256 amount_SGM_in) external returns (bool);
     
-    function redeemBond(address _to, uint256 class, uint256[] calldata nonce, uint256[] calldata _amount) external returns (bool);
+   function redeemBond(address _to, uint256 class, uint256[] memory nonce, uint256[] memory _amount, address first_referral, address second_referral) external returns (bool);
 }
 
-contract SigmoidBank{
+contract SigmoidBank is ISigmoidBank{
     address public dev_address;
     address public SASH_contract;
     address public SGM_contract;
@@ -291,31 +341,31 @@ contract SigmoidBank{
 
     }
 
-    function setGovernanceContract(address governance_address) public returns (bool) {
+    function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender==governance_contract);
         governance_contract = governance_address;
         return(true);
     }
     
-    function setBankContract(address bank_address) public returns (bool) {
+    function setBankContract(address bank_address) public override returns (bool) {
         require(msg.sender==governance_contract);
         bank_contract = bank_address;
         return(true);
     }
     
-    function setBondContract(address bond_address)public returns (bool) {
+    function setBondContract(address bond_address)public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         bond_contract=bond_address;
         return (true);
     }   
       
-    function setTokenContract(uint256 class, address contract_address) public returns (bool) {
+    function setTokenContract(uint256 class, address contract_address) public override returns (bool) {
         require(msg.sender==governance_contract);
         token_contract[class] = contract_address;
         return(true);
     }
         
-    function initializeBankContract() public returns (bool) {
+    function initializeBankContract() public override returns (bool) {
         require(msg.sender==governance_contract);
         IUniswapV2Factory(SwapFactoryAddress).createPair(SGM_contract,SASH_contract);
         initialized = true;
@@ -323,7 +373,7 @@ contract SigmoidBank{
         
     }
     
-    function checkIntheList(address contract_address) view public returns (bool){
+    function checkIntheList(address contract_address) view public override returns (bool){
         for (uint i=0; i<USD_token_list.length; i++) {
         if(USD_token_list[i]==contract_address){
             return(true);
@@ -332,7 +382,7 @@ contract SigmoidBank{
         return(false);
     }
     
-    function addStablecoinToList(address contract_address) public returns (bool) {
+    function addStablecoinToList(address contract_address) public override returns (bool) {
         require(msg.sender == governance_contract);
         require(checkIntheList(contract_address) == false);
         USD_token_list.push(contract_address);
@@ -343,19 +393,19 @@ contract SigmoidBank{
         return(true);
     }
     
-    function migratorLP(address _to, address tokenA, address tokenB) public returns (bool){
+    function migratorLP(address _to, address tokenA, address tokenB) public override returns (bool){
          require(msg.sender == governance_contract);
          address pair_addrss = IUniswapV2Factory(SwapFactoryAddress).getPair(tokenA, tokenB);
          IUniswapV2Pair(pair_addrss).transfer(_to, IUniswapV2Pair(pair_addrss).balanceOf(address(this)));
     }
     
-    function powerX(uint256 power_root, uint256 num,uint256 num_decimals)  pure public returns (uint256) {
+    function powerX(uint256 power_root, uint256 num,uint256 num_decimals) pure public override returns (uint256) {
         return(num**power_root*1e3/((10**num_decimals)**power_root));
             }
         
     
     
-    function logX(uint256 log_root,uint256 log_decimals, uint256 num)  pure public returns (uint256) {
+    function logX(uint256 log_root,uint256 log_decimals, uint256 num)  pure public override returns (uint256) {
         for (uint i=1; i<224; i++) {
             if(num/(log_root**i/((10**log_decimals)**i))<1){
             return(i-1);
@@ -363,27 +413,27 @@ contract SigmoidBank{
         }
     }
 
-    function getBondExchangeRateSASHtoUSD(uint256 amount_SASH_out) view public returns (uint256){
+    function getBondExchangeRateSASHtoUSD(uint256 amount_SASH_out) view public override returns (uint256){
         uint256 supply_multiplier=IERC20(token_contract[0]).totalSupply()/1e24;
         uint256 supply_multiplier_power= logX(16,1,supply_multiplier);
         return(powerX(supply_multiplier_power,11,1)*amount_SASH_out/1e3);
     }
     
-    function getBondExchangeRateUSDtoSASH(uint256 amount_USD_in) view public returns (uint256){
+    function getBondExchangeRateUSDtoSASH(uint256 amount_USD_in) view public override returns (uint256){
         require(amount_USD_in>=1e18, "Amount must be higher than 1 USD.");
         uint256 supply_multiplier=IERC20(token_contract[0]).totalSupply()/1e24;
         uint256 supply_multiplier_power= logX(16,1,supply_multiplier);
         return(amount_USD_in*1e3/powerX(supply_multiplier_power,11,1));
     }
     
-    function getBondExchangeRatSGMtoSASH(uint256 amount_SGM_out) view public returns (uint256){
+    function getBondExchangeRatSGMtoSASH(uint256 amount_SGM_out) view public override returns (uint256){
         uint256 maxium_supply_SGM = ISigmoidTokens(SGM_contract).maxiumuSupply();
         uint256 supply_multiplier = IERC20(SGM_contract).totalSupply()*1e6/maxium_supply_SGM;
         uint256 supply_multiplier_rate = supply_multiplier**2/1e6;
         return(amount_SGM_out*supply_multiplier_rate);       
     }
     
-   function getBondExchangeRateSASHtoSGM(uint256 amount_SASH_in) view public returns (uint256){
+   function getBondExchangeRateSASHtoSGM(uint256 amount_SASH_in) view public override returns (uint256){
         require(amount_SASH_in>=1e18, "Amount must be higher than 1 SASHH.");
         uint256 maxium_supply_SGM = ISigmoidTokens(SGM_contract).maxiumuSupply();
         uint256 supply_multiplier=IERC20(SGM_contract).totalSupply()*1e6/maxium_supply_SGM;
@@ -391,7 +441,7 @@ contract SigmoidBank{
         return(amount_SASH_in/supply_multiplier_rate);          
     }
 
-    function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) public returns (bool){
+    function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) public override returns (bool){
         require(initialized == true);
         require(checkIntheList(contract_address)==true, "Token does not exist in the list.");
         require(amount_USD_in>=1e18, "Amount must be higher than 1 USD.");
@@ -405,7 +455,7 @@ contract SigmoidBank{
         return(true);
     }
     
-    function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) public returns (bool){
+    function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) public override returns (bool){
         require(initialized == true);
         require(amount_SASH_in>=1e18, "Amount must be higher than 1 USD.");
         uint256 amount_bond_out = getBondExchangeRateUSDtoSASH(amount_SASH_in);
@@ -420,7 +470,7 @@ contract SigmoidBank{
         return(true);
     }
     
-    function buySASHSGMBondsWithSGM(address _from, address _to, uint256 amount_SGM_in) public returns (bool){
+    function buyVoteBondWithSGM(address _from, address _to, uint256 amount_SGM_in) public override returns (bool){
         require(initialized == true);
 
         uint256 amount_bond_out = getBondExchangeRatSGMtoSASH(amount_SGM_in);
@@ -451,7 +501,7 @@ contract SigmoidBank{
         return(true);
     }
         
-    function redeemBond(address _to, uint256 class, uint256[] memory nonce, uint256[] memory _amount) public returns (bool){
+    function redeemBond(address _to, uint256 class, uint256[] memory nonce, uint256[] memory _amount, address first_referral, address second_referral) public override returns (bool){
         require(initialized == true);
         assert( IERC659(bond_contract).redeemBond(msg.sender, class, nonce, _amount));
         uint256 amount_token_mint;
@@ -478,6 +528,7 @@ contract SigmoidBank{
         if(amount_token_mint > 0){
             
             ISigmoidTokens(token_contract[class]).mint(_to,amount_token_mint);
+            ISigmoidGovernance(governance_contract).claimReferralReward(first_referral, second_referral, amount_token_mint);
        
         }
         
