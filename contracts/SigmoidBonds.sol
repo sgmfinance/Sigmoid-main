@@ -302,8 +302,8 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     
     }
             
-    function issueBond(address _to, uint256  class, uint256 _amount) external override returns(bool){
-        require(msg.sender==bank_contract, "ERC659: operator unauthorized");
+     function issueBond(address _to, uint256  class, uint256 _amount) external override returns(bool){
+        require(msg.sender==_bankAddress[class], "ERC659: operator unauthorized");
         require(_to != address(0), "ERC659: issue bond to the zero address");
         require(_amount >= 100, "ERC659: invalid amount");
         if(_genesis_nonce_time[class]==0){_genesis_nonce_time[class]=now-now % _Fibonacci_epoch[class];}
@@ -324,9 +324,9 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
             }
         }   
             amount_out_eponge+=FibonacciTimeEponge;     
-    } 
+    }
         
-        amount_out_eponge=_amount/amount_out_eponge*2;
+        amount_out_eponge=_amount*1e6/amount_out_eponge;
         FibonacciTimeEponge=0;
         FibonacciTimeEponge0=1;
         FibonacciTimeEponge1=2;
@@ -340,7 +340,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
                     FibonacciTimeEponge1=FibonacciTimeEponge;
                 }
             }   
-            require(_issueBond( _to, class, now_nonce + FibonacciTimeEponge, amount_out_eponge * FibonacciTimeEponge) == true);
+            require(_issueBond( _to, class, now_nonce + FibonacciTimeEponge, amount_out_eponge * FibonacciTimeEponge/1e6) == true);
         }    
       return(true);
     }

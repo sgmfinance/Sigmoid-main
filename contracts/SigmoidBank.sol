@@ -416,14 +416,14 @@ contract SigmoidBank is ISigmoidBank{
     function getBondExchangeRateSASHtoUSD(uint256 amount_SASH_out) view public override returns (uint256){
         uint256 supply_multiplier=IERC20(token_contract[0]).totalSupply()/1e24;
         uint256 supply_multiplier_power= logX(16,1,supply_multiplier);
-        return(powerX(supply_multiplier_power,11,1)*amount_SASH_out/1e3);
+        return(powerX(supply_multiplier_power,11,1)*amount_SASH_out/1e2);
     }
     
     function getBondExchangeRateUSDtoSASH(uint256 amount_USD_in) view public override returns (uint256){
         require(amount_USD_in>=1e18, "Amount must be higher than 1 USD.");
         uint256 supply_multiplier=IERC20(token_contract[0]).totalSupply()/1e24;
         uint256 supply_multiplier_power= logX(16,1,supply_multiplier);
-        return(amount_USD_in*1e3/powerX(supply_multiplier_power,11,1));
+        return(amount_USD_in*1e2/powerX(supply_multiplier_power,11,1));
     }
     
     function getBondExchangeRatSGMtoSASH(uint256 amount_SGM_out) view public override returns (uint256){
