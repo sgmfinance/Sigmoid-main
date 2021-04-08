@@ -399,6 +399,7 @@ contract SigmaGovernance is ISigmoidGovernance{
     }
     
     function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) public override returns(bool){
+        require( ISigmoidBank(bank_contract).buyVoteBondWithSGM(msg.sender, msg.sender, _amount));
         if (approval == true){
             _proposalVoting[poposal_class][proposal_nonce][1]+=_amount;
             _proposalVoting[poposal_class][proposal_nonce][2]+=_amount;

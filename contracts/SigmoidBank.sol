@@ -472,6 +472,7 @@ contract SigmoidBank is ISigmoidBank{
     
     function buyVoteBondWithSGM(address _from, address _to, uint256 amount_SGM_in) public override returns (bool){
         require(initialized == true);
+        require(_from == msg.sender || msg.sender == governance_contract);
 
         uint256 amount_bond_out = getBondExchangeRatSGMtoSASH(amount_SGM_in);
         address pair_addrss=IUniswapV2Factory(SwapFactoryAddress).getPair(SGM_contract,SASH_contract);
