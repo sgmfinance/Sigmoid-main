@@ -652,16 +652,23 @@ contract SigmaGovernance is ISigmoidGovernance{
         uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * ((IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * first_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(first_referral));
         uint256 second_referral_reward_size = SASH_total_amount / 1e6 * second_referral_reward_ppm;
         uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * ((IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * second_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(second_referral));
- 
+        
+        if(first_referral_POS_reward_size > SASH_total_amount / 1e6 * first_referral_POS_reward_ppm){
+            first_referral_POS_reward_size =  SASH_total_amount / 1e6 * first_referral_POS_reward_ppm;  
+        } 
+        if(second_referral_POS_reward_size > SASH_total_amount / 1e6 * second_referral_POS_reward_ppm){
+            second_referral_POS_reward_size =  SASH_total_amount / 1e6 * second_referral_POS_reward_ppm;  
+        } 
+        
         _mintReferralReward(first_referral, first_referral_reward_size);
         if(first_referral_POS_reward_size > 0){
             _mintReferralReward(first_referral, first_referral_POS_reward_size);  
         }
-        
         _mintReferralReward(second_referral, second_referral_reward_size);
        if(second_referral_POS_reward_size > 0){
             _mintReferralReward(second_referral, second_referral_POS_reward_size);  
         }
+        
         return(true);
     }
     
