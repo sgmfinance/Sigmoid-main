@@ -325,6 +325,7 @@ contract SigmaGovernance is ISigmoidGovernance{
     address public governance_contract;
     address public bank_contract;
     address public bond_contract;
+    address public airdrop_contract;
     bool public initialized;
     
   
@@ -400,6 +401,7 @@ contract SigmaGovernance is ISigmoidGovernance{
     
     function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) public override returns(bool){
         require( ISigmoidBank(bank_contract).buyVoteBondWithSGM(msg.sender, msg.sender, _amount));
+        require( _proposalVoting[poposal_class][proposal_nonce][0] + _proposalClassInfo[1][0] > now);
         if (approval == true){
             _proposalVoting[poposal_class][proposal_nonce][1]+=_amount;
             _proposalVoting[poposal_class][proposal_nonce][2]+=_amount;
@@ -583,6 +585,19 @@ contract SigmaGovernance is ISigmoidGovernance{
         return(true);
 
     }
+    
+    
+    
+    // function mintAirdropReward(address _to, uint256 SASH_amount) public  returns(bool){
+    //     IERC20(airdrop_contract).balanceOf(msg.sender)/1e6*;
+    //     require(allocation_minted[_to][0] + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
+    //     ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
+    //     allocation_minted[_to][0] += SASH_amount;
+    //     SASH_total_allocation_distributed += SASH_amount;
+        
+    //     return(true);
+
+    // }
     
     function changeTeamAllocation(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_ppm, uint256 SGM_ppm) public override returns(bool){
         require(poposal_class <= 1);
