@@ -2,13 +2,10 @@ pragma solidity ^0.5.17;
 // SPDX-License-Identifier: apache 2.0
 /*
     Copyright 2020 Sigmoid Foundation <info@SGM.finance>
-
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -167,6 +164,7 @@ interface IERC20 {
 }
 
 interface ISigmoidTokens {
+    function isActive(bool _contract_is_active) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
@@ -376,13 +374,14 @@ contract ERC20 is IERC20 {
     }
 }
 
-contract SGM is ERC20{
+contract SGM is ERC20, ISigmoidTokens{
     string private _name;
     string private _symbol;
     uint8 private _decimals;
     address public bank_contract;
     address public dev_address;
     address public governance_contract;
+    bool public contract_is_active;
     /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
      * these values are immutable: they can only be set once during
@@ -397,6 +396,11 @@ contract SGM is ERC20{
         governance_contract = governance_address;
     }
     
+    function isActive(bool _contract_is_active) public returns (bool){
+         contract_is_active = _contract_is_active;
+         return(contract_is_active);
+     }
+     
     function maxiumuSupply() public view returns (uint256) {
         return(_maxiumuSupply);
     }
@@ -415,12 +419,14 @@ contract SGM is ERC20{
     }
     
     function mint(address _to, uint256 _amount) public returns (bool) {
+        require(contract_is_active == true);
         require(msg.sender==bank_contract || msg.sender==governance_contract);
         _mint(_to, _amount);
         return(true);
     }
     
     function bankTransfer(address _from, address _to, uint256 _amount) public returns (bool){
+        require(contract_is_active == true);
         require(msg.sender==bank_contract); 
         require(_from != address(0), "ERC20: transfer from the zero address");
         require(_to != address(0), "ERC20: transfer to the zero address");
