@@ -2,13 +2,10 @@ pragma solidity ^0.6.2;
 // SPDX-License-Identifier: apache 2.0
 /*
     Copyright 2020 Sigmoid Foundation <info@SGM.finance>
-
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -97,6 +94,7 @@ interface IERC659 {
 
 interface IsigmoidBonds{
     function setGovernanceContract(address governance_address) external returns (bool);
+    function setExchangeContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
     function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
@@ -127,6 +125,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     using SafeMath for uint256;
     
     address public governance_contract;
+    address public exchange_contract;
     address public bank_contract;
     address public bond_contract;
     mapping (uint256 => address) public token_contract;
@@ -149,6 +148,12 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
      function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         governance_contract = governance_address;
+        return(true);
+    }
+    
+    function setExchangeContract(address exchange_address) public override returns (bool) {
+        require(msg.sender==governance_contract, "ERC659: operator unauthorized");
+        exchange_contract = exchange_address;
         return(true);
     }
     
@@ -359,7 +364,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     }
     function transferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external override returns(bool){ 
         for (uint n=0; n<nonce.length; n++) {
-            require(msg.sender==bank_contract || msg.sender==_from, "ERC659: operator unauthorized");
+            require(msg.sender==bank_contract || msg.sender==exchange_contract, "ERC659: operator unauthorized");
             require(_balances[_from][class[n]][nonce[n]] >= _amount[n], "ERC659: not enough bond to transfer");
             require(_to!=address(0), "ERC659: cant't transfer to zero bond, use 'burnBond()' instead");
             require(_transferBond(_from, _to, class[n], nonce[n], _amount[n]));
