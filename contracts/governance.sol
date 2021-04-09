@@ -368,7 +368,7 @@ contract SigmaGovernance is ISigmoidGovernance{
       
     }
         
-    function _mintReferralReward(address _to, uint256 SASH_amount) public returns(bool){
+    function _mintReferralReward(address _to, uint256 SASH_amount) private returns(bool){
       
         require(SASH_proposal_claimed + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) / 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
         ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
