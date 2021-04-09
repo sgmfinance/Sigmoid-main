@@ -93,12 +93,14 @@ interface IERC659 {
 }
 
 interface IsigmoidBonds{
+    function isActive(bool _contract_is_active) external returns (bool);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setExchangeContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
     function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
 }
+
 
 contract ERC659data {
     mapping (address => mapping( uint256 =>mapping(uint256=> uint256))) public _balances;
@@ -124,6 +126,7 @@ contract ERC659data {
 contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     using SafeMath for uint256;
     
+    bool public contract_is_active;
     address public governance_contract;
     address public exchange_contract;
     address public bank_contract;
@@ -140,11 +143,32 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     constructor () public {
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
-        _Fibonacci_epoch[0]=60;
+        _Fibonacci_epoch[0]=8*60*60; // in test 60 sec
+        _genesis_nonce_time[0]=0;
+        
+        _Symbol[1]="SGM-SASH";
+        _Fibonacci_number[0]=8;
+        _Fibonacci_epoch[0]=8*60*60;
+        _genesis_nonce_time[0]=0;
+        
+        _Symbol[2]="SGM,SGM";
+        _Fibonacci_number[0]=8;
+        _Fibonacci_epoch[0]=8*60*60;
+        _genesis_nonce_time[0]=0;
+        
+        _Symbol[3]="SASH,SGM";
+        _Fibonacci_number[0]=8;
+        _Fibonacci_epoch[0]=8*60*60;
         _genesis_nonce_time[0]=0;
         
     }
     
+     function isActive(bool _contract_is_active) public override returns (bool){
+         contract_is_active = _contract_is_active;
+         return(contract_is_active);
+         
+     }
+     
      function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
         governance_contract = governance_address;
@@ -308,6 +332,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     }
             
      function issueBond(address _to, uint256  class, uint256 _amount) external override returns(bool){
+        require(contract_is_active == true);
         require(msg.sender==_bankAddress[class], "ERC659: operator unauthorized");
         require(_to != address(0), "ERC659: issue bond to the zero address");
         require(_amount >= 100, "ERC659: invalid amount");
@@ -350,6 +375,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
       return(true);
     }
     function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata  _amount) external override returns(bool){
+        require(contract_is_active == true);
         require(msg.sender==bank_contract || msg.sender==_from, "ERC659: operator unauthorized");
         for (uint i=0; i<nonce.length; i++) {
             require(_balances[_from][class][nonce[i]] >= _amount[i], "ERC659: not enough bond for redemption");
@@ -363,6 +389,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
        
     }
     function transferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external override returns(bool){ 
+        require(contract_is_active == true);
         for (uint n=0; n<nonce.length; n++) {
             require(msg.sender==bank_contract || msg.sender==exchange_contract, "ERC659: operator unauthorized");
             require(_balances[_from][class[n]][nonce[n]] >= _amount[n], "ERC659: not enough bond to transfer");
@@ -374,7 +401,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
         return(true);
     }
     function burnBond(address _from, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external override returns(bool){
-   
+        require(contract_is_active == true);
         for (uint n=0; n<nonce.length; n++) {
             require(msg.sender==bank_contract || msg.sender==_from, "ERC659: operator unauthorized");
             require(_balances[_from][class[n]][nonce[n]] >= _amount[n], "ERC659: not enough bond to burn");
