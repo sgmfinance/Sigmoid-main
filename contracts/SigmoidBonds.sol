@@ -98,7 +98,7 @@ interface ISigmoidBonds{
     function setExchangeContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
-    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
+    function createBondClass(uint256 class, string calldata bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
 }
 
 
@@ -149,7 +149,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     constructor ( address governance_address) public {
 
         governance_contract=governance_address;
-        dev_address = msg.sender;
+
         
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
