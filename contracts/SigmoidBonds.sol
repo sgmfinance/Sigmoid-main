@@ -151,8 +151,6 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         SGM_contract=SGM_address;
         governance_contract=governance_address;
         dev_address = msg.sender;
-        token_contract[0]=SASH_contract;
-        
         
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
