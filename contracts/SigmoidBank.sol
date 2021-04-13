@@ -313,9 +313,10 @@ contract SigmoidBank is ISigmoidBank{
     address public SwapFactoryAddress = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     address public SwapRouterAddress = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     
-    constructor(address SASH_Contract, address SGM_Contract) public {
-        SASH_contract=SASH_Contract;
-        SGM_contract=SGM_Contract;
+    constructor(address SASH_address, address SGM_address) public {
+        SASH_contract=SASH_address;
+        SGM_contract=SGM_address;
+        Governance_contract=address;
         dev_address = msg.sender;
         token_contract[0]=SASH_contract;
 
