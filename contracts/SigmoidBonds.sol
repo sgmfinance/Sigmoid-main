@@ -92,13 +92,13 @@ interface IERC659 {
     event eventTransferBond(address _operator, address _from, address _to, uint256 class, uint256 nonce, uint256 _amount);
 }
 
-interface IsigmoidBonds{
+interface ISigmoidBonds{
     function isActive(bool _contract_is_active) external returns (bool);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setExchangeContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setTokenContract(uint256 class, address contract_address) external returns (bool);
-    function createBondClass(uint256 class, string calldata bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
+    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
 }
 
 
@@ -123,7 +123,7 @@ contract ERC659data {
     
 }
 
-contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
+contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     using SafeMath for uint256;
     
     bool public contract_is_active;
@@ -131,12 +131,21 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     address public exchange_contract;
     address public bank_contract;
     address public bond_contract;
+    
+    mapping (uint256 => uint256) public last_activeSupply;
+    
+    mapping (uint256 => uint256) public last_burnedSupply;
+  
+    mapping (uint256 => uint256) public last_redeemedSupply;
+    
+    
     mapping (uint256 => address) public token_contract;
   
-    
+    mapping (uint256 => uint256)  public last_bond_redeemed;
     mapping (uint256 => uint256)  public _Fibonacci_number;
     mapping (uint256 => uint256)  public _Fibonacci_epoch;
     mapping (uint256 => uint256)  public _genesis_nonce_time;
+
     address public dev_address=msg.sender;
 
 
@@ -247,17 +256,20 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
     }
     
     function bondIsRedeemable(uint256 class, uint256 nonce) public override view returns (bool){
+        if(last_bond_redeemed[class] >= nonce){
+            return(true);
+        }
         
         if(uint(_info[class][nonce][1])<now){
-            uint256 total_liquidity;
-            uint256 needed_liquidity;
+            uint256 total_liquidity=last_activeSupply[class];
+            uint256 needed_liquidity=last_activeSupply[class];
             //uint256 available_liquidity;
     
-            for (uint i=0; i<=last_bond_nonce[class]; i++) {
+            for (uint i=last_bond_redeemed[class]; i<=last_bond_nonce[class]; i++) {
                 total_liquidity += _activeSupply[class][i]+_redeemedSupply[class][i];
                 }
             
-            for (uint i=0; i<=nonce; i++) {
+            for (uint i=last_bond_redeemed[class]; i<=nonce; i++) {
                 needed_liquidity += (_activeSupply[class][i]+_redeemedSupply[class][i])*2;
                 }
                 
@@ -277,6 +289,20 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
         }
 
              
+    }
+    
+    function _writeLastLiquidity(uint256 class, uint256 nonce) internal returns (bool){
+  
+    
+        uint256 total_liquidity;
+        //uint256 available_liquidity;
+
+        for (uint i=last_bond_redeemed[class]; i<nonce; i++) {
+            total_liquidity += last_activeSupply[class] + _activeSupply[class][i]+_redeemedSupply[class][i];
+       
+                
+        } 
+        last_activeSupply[class]=total_liquidity;
     }
          
     function _createBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
@@ -374,6 +400,7 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
         }    
       return(true);
     }
+    
     function redeemBond(address _from, uint256 class, uint256[] calldata nonce, uint256[] calldata  _amount) external override returns(bool){
         require(contract_is_active == true);
         require(msg.sender==bank_contract || msg.sender==_from, "ERC659: operator unauthorized");
@@ -381,6 +408,12 @@ contract SigmoidBonds is IERC659, IsigmoidBonds, ERC659data{
             require(_balances[_from][class][nonce[i]] >= _amount[i], "ERC659: not enough bond for redemption");
             require(bondIsRedeemable(class,nonce[i])==true, "ERC659: can't redeem bond before it's redemption day");
             require(_redeemBond(_from,class,nonce[i],_amount[i]));
+            
+            if(last_bond_redeemed[class] < nonce[i]){
+
+            _writeLastLiquidity(class,nonce[i]);
+            last_bond_redeemed[class]=nonce[i];
+            }
         }
         
         
