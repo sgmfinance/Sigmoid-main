@@ -405,6 +405,7 @@ contract SigmoidBank is ISigmoidBank{
         uint256 supply_multiplier_power= logX(16,1,supply_multiplier);
         return(powerX(supply_multiplier_power,11,1)*amount_SASH_out/1e3);
     }
+
     
     function getBondExchangeRateUSDtoSASH(uint256 amount_USD_in) view public override returns (uint256){
         require(amount_USD_in>=1e18, "Amount must be higher than 1 USD.");
@@ -416,7 +417,7 @@ contract SigmoidBank is ISigmoidBank{
     function getBondExchangeRatSGMtoSASH(uint256 amount_SGM_out) view public override returns (uint256){
         uint256 maxium_supply_SGM = ISigmoidTokens(SGM_contract).maxiumuSupply();
         uint256 supply_multiplier = IERC20(SGM_contract).totalSupply()*1e6/maxium_supply_SGM;
-        uint256 supply_multiplier_rate = supply_multiplier**2/1e6;
+        uint256 supply_multiplier_rate =1000+supply_multiplier**2/1e6;
         return(amount_SGM_out*supply_multiplier_rate);       
     }
     
@@ -424,7 +425,8 @@ contract SigmoidBank is ISigmoidBank{
         require(amount_SASH_in>=1e18, "Amount must be higher than 1 SASHH.");
         uint256 maxium_supply_SGM = ISigmoidTokens(SGM_contract).maxiumuSupply();
         uint256 supply_multiplier=IERC20(SGM_contract).totalSupply()*1e6/maxium_supply_SGM;
-        uint256 supply_multiplier_rate= supply_multiplier**2/1e6;
+        uint256 supply_multiplier_rate= 1000+supply_multiplier**2/1e6;
+  
         return(amount_SASH_in/supply_multiplier_rate);          
     }
 
