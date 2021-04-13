@@ -111,8 +111,6 @@ contract ERC659data {
   
     mapping (uint256 => mapping(uint256 => uint256)) public _redeemedSupply;
 
-    mapping (uint256 => address) public _bankAddress;
-    
     mapping (uint256 => string) public _Symbol;
     
     mapping (uint256 => mapping(uint256=> mapping(uint256=> uint256))) public _info;
@@ -360,7 +358,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
             
      function issueBond(address _to, uint256  class, uint256 _amount) external override returns(bool){
         require(contract_is_active == true);
-        require(msg.sender==_bankAddress[class], "ERC659: operator unauthorized");
+        require(msg.sender==bank_contract, "ERC659: operator unauthorized");
         require(_to != address(0), "ERC659: issue bond to the zero address");
         require(_amount >= 100, "ERC659: invalid amount");
         if(_genesis_nonce_time[class]==0){_genesis_nonce_time[class]=now-now % _Fibonacci_epoch[class];}
