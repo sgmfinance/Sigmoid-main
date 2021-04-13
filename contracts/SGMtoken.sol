@@ -392,7 +392,7 @@ contract SGM is ERC20{
         _symbol = "SGM";
         _decimals = 18;
         dev_address = msg.sender;
-        _maxiumuSupply = 1e27;
+        _maxiumuSupply = 1e24;
         governance_contract = governance_address;
     }
     
