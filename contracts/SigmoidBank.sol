@@ -271,6 +271,15 @@ interface ISigmoidGovernance{
     function getReferralPolicy(uint256 index) external view returns(uint256);
 }
 
+interface IsigmoidBonds{
+    function isActive(bool _contract_is_active) external returns (bool);
+    function setGovernanceContract(address governance_address) external returns (bool);
+    function setExchangeContract(address governance_address) external returns (bool);
+    function setBankContract(address bank_address) external returns (bool);
+    function setTokenContract(uint256 class, address contract_address) external returns (bool);
+    function createBondClass(uint256 class, string calldata bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)external returns (bool);
+}
+
 interface ISigmoidBank{
     function isActive(bool _contract_is_active) external returns (bool);
     function setGovernanceContract(address governance_address) external returns (bool);
@@ -298,6 +307,7 @@ interface ISigmoidBank{
    function redeemBond(address _to, uint256 class, uint256[] memory nonce, uint256[] memory _amount, address first_referral, address second_referral) external returns (bool);
 }
 
+
 contract SigmoidBank is ISigmoidBank{
     address public dev_address;
     address public SASH_contract;
@@ -313,12 +323,23 @@ contract SigmoidBank is ISigmoidBank{
     address public SwapFactoryAddress = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     address public SwapRouterAddress = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     
-    constructor(address SASH_address, address SGM_address) public {
+    constructor(address SASH_address, address SGM_address, address governance_address, address contract_address, address _to, uint256 amount_USD_in) public {
         SASH_contract=SASH_address;
         SGM_contract=SGM_address;
-        Governance_contract=address;
+        governance_contract=governance_address;
         dev_address = msg.sender;
         token_contract[0]=SASH_contract;
+        
+        ISigmoidTokens(token_contract[0]).mint(dev_address,amount_USD_in);
+        
+        require(checkIntheList(contract_address)==true, "Token does not exist in the list.");
+        uint256 amount_bond_out = getBondExchangeRateUSDtoSASH(amount_USD_in);
+        address pair_addrss=IUniswapV2Factory(SwapFactoryAddress).getPair(contract_address,token_contract[0]);
+        require(IERC20(contract_address).transferFrom(msg.sender, pair_addrss, amount_USD_in),'Not enough USD for the deposit.');
+        require(ISigmoidTokens(SASH_contract).mint(pair_addrss,amount_bond_out));
+        IUniswapV2Pair(pair_addrss).sync;
+        IUniswapV2Pair(pair_addrss).mint(address(this));
+        IERC659(bond_contract).issueBond(_to, 0, amount_bond_out*2);
 
     }
     
@@ -434,7 +455,6 @@ contract SigmoidBank is ISigmoidBank{
     function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) public override returns (bool){
         require(contract_is_active == true);
         require(checkIntheList(contract_address)==true, "Token does not exist in the list.");
-        require(amount_USD_in>=1e18, "Amount must be higher than 1 USD.");
         uint256 amount_bond_out = getBondExchangeRateUSDtoSASH(amount_USD_in);
         address pair_addrss=IUniswapV2Factory(SwapFactoryAddress).getPair(contract_address,token_contract[0]);
         require(IERC20(contract_address).transferFrom(msg.sender, pair_addrss, amount_USD_in),'Not enough USD for the deposit.');
