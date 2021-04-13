@@ -146,10 +146,14 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     mapping (uint256 => uint256)  public _Fibonacci_epoch;
     mapping (uint256 => uint256)  public _genesis_nonce_time;
 
-    address public dev_address=msg.sender;
-
-
-    constructor () public {
+    constructor (address SASH_address, address SGM_address, address governance_address) public {
+        SASH_contract=SASH_address;
+        SGM_contract=SGM_address;
+        governance_contract=governance_address;
+        dev_address = msg.sender;
+        token_contract[0]=SASH_contract;
+        
+        
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
         _Fibonacci_epoch[0]=8*60*60; // in test 60 sec
