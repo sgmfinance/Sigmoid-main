@@ -449,7 +449,7 @@ contract SigmoidBank is ISigmoidBank{
     function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) public override returns (bool){
         require(contract_is_active == true);
         require(amount_SASH_in>=1e18, "Amount must be higher than 1 USD.");
-        uint256 amount_bond_out = getBondExchangeRateUSDtoSASH(amount_SASH_in);
+        uint256 amount_bond_out = getBondExchangeRateSASHtoSGM(amount_SASH_in);
         uint256 maxium_supply_SGM = ISigmoidTokens(SGM_contract).maxiumuSupply();
         require(amount_bond_out+IERC20(SGM_contract).totalSupply()<=maxium_supply_SGM, "Cant mint more SGM.");
         address pair_addrss=IUniswapV2Factory(SwapFactoryAddress).getPair(SGM_contract,SASH_contract);
