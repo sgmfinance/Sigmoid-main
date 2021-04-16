@@ -1,3 +1,4 @@
+
 pragma solidity ^0.6.12;
 // SPDX-License-Identifier: apache 2.0
 /*
@@ -292,6 +293,7 @@ interface ISigmoidGovernance{
     function getProposalInfo(uint256 poposal_class, uint256 proposal_nonce) external view returns(uint256 timestamp, uint256 total_vote, uint256 approve_vote, uint256 architect_veto, uint256 execution_left, uint256 execution_interval);
     
     function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) external returns(bool);
+    function veto(uint256 poposal_class, uint256 proposal_nonce, bool approval) external  returns(bool);
     function createProposal(uint256 poposal_class, address proposal_address, uint256 proposal_execution_nonce, uint256 proposal_execution_interval) external returns(bool);
     function revokeProposal(uint256 poposal_class, uint256 proposal_nonce, uint256 revoke_poposal_class, uint256 revoke_proposal_nonce) external returns(bool);
     function checkProposal(uint256 poposal_class, uint256 proposal_nonce) external view returns(bool);
@@ -376,7 +378,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         
         _proposalClassInfo[2][0] = 3*24*60*60;//timelock
         _proposalClassInfo[2][1] = 50;//minimum approval percentage needed
-        _proposalClassInfo[2][3] = 1;//need arechitect approval
+        _proposalClassInfo[2][3] = 0;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
         
         
@@ -416,7 +418,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         timestamp=_proposalVoting[poposal_class][proposal_nonce][0];
         total_vote=_proposalVoting[poposal_class][proposal_nonce][1];
         approve_vote=_proposalVoting[poposal_class][proposal_nonce][2];
-        architect_veto=_proposalVoting[poposal_class][proposal_nonce][3];
+        architect_veto=_proposalVoting[poposal_class][proposal_nonce][3];  //0=no vote, 1=approval, 2=veto
         execution_left=_proposalVoting[poposal_class][proposal_nonce][4];
         execution_interval=_proposalVoting[poposal_class][proposal_nonce][5];
         
@@ -424,13 +426,26 @@ contract SigmaGovernance is ISigmoidGovernance{
     
     function vote(uint256 poposal_class, uint256 proposal_nonce, bool approval, uint256 _amount) public override returns(bool){
         require( ISigmoidBank(bank_contract).buyVoteBondWithSGM(msg.sender, msg.sender, _amount));
-        require( _proposalVoting[poposal_class][proposal_nonce][0] + _proposalClassInfo[1][0] > now);
+        require( _proposalVoting[poposal_class][proposal_nonce][0] + _proposalClassInfo[poposal_class][0] > now);
         if (approval == true){
             _proposalVoting[poposal_class][proposal_nonce][1]+=_amount;
             _proposalVoting[poposal_class][proposal_nonce][2]+=_amount;
         }
         else {
             _proposalVoting[poposal_class][proposal_nonce][1]+=_amount;
+        }
+        return(true);
+          
+    }
+    
+    function veto(uint256 poposal_class, uint256 proposal_nonce, bool approval) public override returns(bool){
+        require( _proposalVoting[poposal_class][proposal_nonce][0] + _proposalClassInfo[poposal_class][0] > now);
+        if (approval == true){
+            _proposalVoting[poposal_class][proposal_nonce][3] = 1;
+        }
+        
+        if (approval == false){
+            _proposalVoting[poposal_class][proposal_nonce][3] = 2;
         }
         return(true);
           
@@ -459,11 +474,11 @@ contract SigmaGovernance is ISigmoidGovernance{
     }
     
     function checkProposal(uint256 poposal_class, uint256 proposal_nonce) public view override returns(bool){
-        require(_proposalVoting[poposal_class][proposal_nonce][0] < now + _proposalClassInfo[1][0], "Wait");
+        require(_proposalVoting[poposal_class][proposal_nonce][0] < now + _proposalClassInfo[poposal_class][0], "Wait");
         uint256 aproval_vote_percentage = _proposalVoting[poposal_class][proposal_nonce][2]*100/_proposalVoting[poposal_class][proposal_nonce][2];
-        require(aproval_vote_percentage >= _proposalClassInfo[1][1], "Vote");
+        require(aproval_vote_percentage >= _proposalClassInfo[poposal_class][1], "Vote");
         
-        require(_proposalVoting[poposal_class][proposal_nonce][3] == 1, "Arechitect");
+        require(_proposalVoting[poposal_class][proposal_nonce][3] <= _proposalClassInfo[poposal_class][3], "Arechitect");
         return(true);
 
     }
@@ -675,26 +690,15 @@ contract SigmaGovernance is ISigmoidGovernance{
 
     }
     
-    
-    
-    // function mintAirdropReward(address _to, uint256 SASH_amount) public  returns(bool){
-    //     IERC20(airdrop_contract).balanceOf(msg.sender)/1e6*;
-    //     require(allocation_minted[_to][0] + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
-    //     ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
-    //     allocation_minted[_to][0] += SASH_amount;
-    //     SASH_total_allocation_distributed += SASH_amount;
-        
-    //     return(true);
 
-    // }
-    
     function changeTeamAllocation(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_ppm, uint256 SGM_ppm) public override returns(bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
-        SASH_allocation_distributed_ppm + SASH_ppm <= SASH_budget_ppm;
+        uint256 total_referral_ppm = first_referral_reward_ppm +first_referral_POS_reward_ppm +second_referral_reward_ppm +second_referral_POS_reward_ppm;
+        require(SASH_allocation_distributed_ppm + SASH_ppm <= SASH_budget_ppm - total_referral_ppm);
         allocation_ppm[_to][0] = SASH_ppm;
         
         SGM_allocation_distributed_ppm + SGM_ppm <= SGM_budget_ppm;
@@ -725,6 +729,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         
         first_referral_reward_ppm = new_1st_referral_reward_ppm;
         first_referral_POS_reward_ppm = new_1st_referral_POS_reward_ppm;
+        
         second_referral_reward_ppm = new_2nd_referral_reward_ppm;
         second_referral_POS_reward_ppm = new_2nd_referral_POS_reward_ppm;
         
@@ -736,26 +741,33 @@ contract SigmaGovernance is ISigmoidGovernance{
     
     function claimReferralReward(address first_referral, address second_referral, uint256 SASH_total_amount) public override returns(bool){
         require(msg.sender == bank_contract);
+        uint256 first_referral_SGM_needed = (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * first_referral_POS_Threshold_ppm;
+        uint256 second_referral_SGM_needed = (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * second_referral_POS_Threshold_ppm;
         
         uint256 first_referral_reward_size = SASH_total_amount / 1e6 * first_referral_reward_ppm;
-        uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * ((IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * first_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(first_referral));
+        uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(first_referral) / second_referral_SGM_needed * 1e5);
         uint256 second_referral_reward_size = SASH_total_amount / 1e6 * second_referral_reward_ppm;
-        uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * ((IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * second_referral_POS_Threshold_ppm /1e6 * IERC20(SGM_contract).balanceOf(second_referral));
+        uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(second_referral) / second_referral_SGM_needed * 1e5);
+        
         
         if(first_referral_POS_reward_size > SASH_total_amount / 1e6 * first_referral_POS_reward_ppm){
-            first_referral_POS_reward_size =  SASH_total_amount / 1e6 * first_referral_POS_reward_ppm;  
-        } 
-        if(second_referral_POS_reward_size > SASH_total_amount / 1e6 * second_referral_POS_reward_ppm){
-            second_referral_POS_reward_size =  SASH_total_amount / 1e6 * second_referral_POS_reward_ppm;  
+            first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm;  
+       
         } 
         
-        _mintReferralReward(first_referral, first_referral_reward_size);
-        if(first_referral_POS_reward_size > 0){
-            _mintReferralReward(first_referral, first_referral_POS_reward_size);  
+        if(second_referral_POS_reward_size > SASH_total_amount / 1e6 * second_referral_POS_reward_ppm){
+            second_referral_POS_reward_size =  SASH_total_amount / 1e6 * second_referral_POS_reward_ppm;  
+       
+        } 
+        
+        if(IERC20(SGM_contract).balanceOf(first_referral) > first_referral_SGM_needed){
+            _mintReferralReward(first_referral, first_referral_reward_size+first_referral_POS_reward_size);
+        
         }
-        _mintReferralReward(second_referral, second_referral_reward_size);
-       if(second_referral_POS_reward_size > 0){
-            _mintReferralReward(second_referral, second_referral_POS_reward_size);  
+        
+        if(IERC20(SGM_contract).balanceOf(second_referral) > second_referral_SGM_needed){
+            _mintReferralReward(second_referral, second_referral_reward_size + second_referral_POS_reward_size);
+        
         }
         
         return(true);
@@ -787,3 +799,4 @@ contract SigmaGovernance is ISigmoidGovernance{
         }
     }
 }
+
