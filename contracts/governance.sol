@@ -308,7 +308,8 @@ interface ISigmoidGovernance{
     function updateBondContract(uint256 poposal_class, uint256 proposal_nonce, address new_bond_address) external returns(bool);
     function updateTokenContract(uint256 poposal_class, uint256 proposal_nonce, uint256 new_token_class, address new_token_address) external returns(bool);
     function createBondClass(uint256 poposal_class, uint256 proposal_nonce, uint256 bond_class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch) external returns (bool);
-   
+    function addStablecoin(uint256 poposal_class, uint256 proposal_nonce, address contract_address) external returns (bool);
+    
     function migratorLP(uint256 poposal_class, uint256 proposal_nonce, address _to, address tokenA, address tokenB) external returns(bool);
     function transferTokenFromGovernance(uint256 poposal_class, uint256 proposal_nonce, address _token, address _to, uint256 _amount) external returns(bool);
     function claimFundForProposal(uint256 poposal_class, uint256 proposal_nonce, address _to, uint256 SASH_amount,  uint256 SGM_amount) external returns(bool);
@@ -623,11 +624,23 @@ contract SigmaGovernance is ISigmoidGovernance{
         
     }
     
+    function addStablecoin(uint256 poposal_class, uint256 proposal_nonce, address contract_address) public override returns (bool){
+        
+        require(poposal_class <= 1);
+        require(checkProposal( poposal_class, proposal_nonce) == true);
+        require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
+        _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
+        ISigmoidBank(bank_contract).addStablecoinToList(contract_address);
+        return(true);
+    }
+    
     function createBondClass(uint256 poposal_class, uint256 proposal_nonce, uint256 bond_class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch) public override returns (bool){
         require(poposal_class <= 1);
         require(checkProposal( poposal_class, proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
+        
         ISigmoidBonds(bond_contract).createBondClass(bond_class, bond_symbol, Fibonacci_number, Fibonacci_epoch);
         return(true);
         
