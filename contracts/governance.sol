@@ -448,7 +448,7 @@ contract SigmaGovernance is ISigmoidGovernance{
     }
     
     function revokeProposal(uint256 poposal_class, uint256 proposal_nonce, uint256 revoke_poposal_class, uint256 revoke_proposal_nonce) public override returns(bool){
-        require(initialized == false);
+        require(initialized == true);
         require(poposal_class <= revoke_poposal_class);
         require(checkProposal( poposal_class,  proposal_nonce) == true);
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
