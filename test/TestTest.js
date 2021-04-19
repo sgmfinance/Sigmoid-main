@@ -95,7 +95,7 @@ describe("sGMtokenContract", function () {
   it('isActive', async function () {
     //call isActive()   
     await SGMtokenInstance.isActive(true, { from: owner });
-    //判断设置 布尔值是否生效
+    //check if active
     assert.equal(true, await SGMtokenInstance.contract_is_active());
   });
   //test maxiumuSupply function
