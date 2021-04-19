@@ -111,6 +111,8 @@ contract ERC659data {
   
     mapping (uint256 => mapping(uint256 => uint256)) public _redeemedSupply;
 
+    mapping (uint256 => address) public _bankAddress;
+    
     mapping (uint256 => string) public _Symbol;
     
     mapping (uint256 => mapping(uint256=> mapping(uint256=> uint256))) public _info;
@@ -146,9 +148,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
 
     constructor ( address governance_address) public {
 
-        governance_contract=governance_address;
-
-        
+        governance_contract=governance_address;       
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
         _Fibonacci_epoch[0]=8*60*60; // in test 60 sec
@@ -156,12 +156,12 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         _Symbol[1]="SGM-SASH";
         _Fibonacci_number[1]=8;
-        _Fibonacci_epoch[1]=8*60*60;
+        _Fibonacci_epoch[1]=1;
         _genesis_nonce_time[1]=0;
         
         _Symbol[2]="SGM,SGM";
         _Fibonacci_number[2]=8;
-        _Fibonacci_epoch[2]=8*60*60;
+        _Fibonacci_epoch[2]=1;
         _genesis_nonce_time[2]=0;
         
         _Symbol[3]="SASH,SGM";
@@ -317,8 +317,6 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return(true);
     }
     function _issueBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
-       
-        
         if (totalSupply(class,nonce)==0){
             _createBond(_to,class,nonce,_amount);
             return(true);

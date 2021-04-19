@@ -1,4 +1,4 @@
-pragma solidity ^0.5.17;
+pragma solidity ^0.6.2;
 // SPDX-License-Identifier: apache 2.0
 /*
     Copyright 2020 Sigmoid Foundation <info@SGM.finance>
@@ -185,14 +185,14 @@ contract ERC20 is IERC20 {
     /**
      * @dev See {IERC20-totalSupply}.
      */
-    function totalSupply() public view returns (uint256) {
+    function totalSupply() public override view returns (uint256) {
         return _totalSupply;
     }
 
     /**
      * @dev See {IERC20-balanceOf}.
      */
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) public override view returns (uint256) {
         return _balances[account];
     }
 
@@ -204,7 +204,7 @@ contract ERC20 is IERC20 {
      * - `recipient` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address recipient, uint256 amount) public returns (bool) {
+    function transfer(address recipient, uint256 amount) public override returns (bool) {
         _transfer(msg.sender, recipient, amount);
         return true;
     }
@@ -212,7 +212,7 @@ contract ERC20 is IERC20 {
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender) public view returns (uint256) {
+    function allowance(address owner, address spender) public override view returns (uint256) {
         return _allowances[owner][spender];
     }
 
@@ -223,7 +223,7 @@ contract ERC20 is IERC20 {
      *
      * - `spender` cannot be the zero address.
      */
-    function approve(address spender, uint256 amount) public returns (bool) {
+    function approve(address spender, uint256 amount) public override returns (bool) {
         _approve(msg.sender, spender, amount);
         return true;
     }
@@ -240,7 +240,7 @@ contract ERC20 is IERC20 {
      * - the caller must have allowance for `sender`'s tokens of at least
      * `amount`.
      */
-    function transferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
+    function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
         _transfer(sender, recipient, amount);
         return true;
@@ -374,7 +374,7 @@ contract ERC20 is IERC20 {
     }
 }
 
-contract SGM is ERC20, ISigmoidTokens{
+contract SASHtoken is ERC20, ISigmoidTokens{
     string private _name;
     string private _symbol;
     uint8 private _decimals;
@@ -396,36 +396,36 @@ contract SGM is ERC20, ISigmoidTokens{
         governance_contract = governance_address;
     }
     
-    function isActive(bool _contract_is_active) public returns (bool){
+    function isActive(bool _contract_is_active) public override returns (bool){
          contract_is_active = _contract_is_active;
          return(contract_is_active);
      }
      
-    function maxiumuSupply() public view returns (uint256) {
+    function maxiumuSupply() public override view returns (uint256) {
         return(_maxiumuSupply);
     }
 
-    function setGovernanceContract(address governance_address) public returns (bool) {
+    function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender == governance_contract);
         governance_contract = governance_address;
         return(true);
         
     }
 
-    function setBankContract(address bank_addres) public returns (bool) {
+    function setBankContract(address bank_addres) public override returns (bool) {
         require(msg.sender == governance_contract);
         bank_contract = bank_addres;
         return(true);
     }
     
-    function mint(address _to, uint256 _amount) public returns (bool) {
+    function mint(address _to, uint256 _amount) public override returns (bool) {
         require(contract_is_active == true);
         require(msg.sender==bank_contract || msg.sender==governance_contract);
         _mint(_to, _amount);
         return(true);
     }
     
-    function bankTransfer(address _from, address _to, uint256 _amount) public returns (bool){
+    function bankTransfer(address _from, address _to, uint256 _amount) public override returns (bool){
         require(contract_is_active == true);
         require(msg.sender==bank_contract); 
         require(_from != address(0), "ERC20: transfer from the zero address");
