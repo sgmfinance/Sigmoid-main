@@ -74,8 +74,13 @@ interface IERC659 {
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
+   
     function getNonceCreated(uint256 class) external view returns (uint256[] memory);
+    function getClassCreated() external view returns (uint256[] memory);
+    
     function balanceOf(address account, uint256 class, uint256 nonce) external view returns (uint256);
+    function batchBalanceOf(address account, uint256 class) external view returns(uint256[] memory);
+    
     function getBondSymbol(uint256 class) view external returns (string memory);
     function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
     function bondIsRedeemable(uint256 class, uint256 nonce) external view returns (bool);
@@ -121,6 +126,8 @@ contract ERC659data {
     
     mapping (uint256 => uint256[]) public _nonceCreated;
     
+    uint256[] public _classCreated;
+    
 }
 
 contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
@@ -148,10 +155,12 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
 
     constructor ( address governance_address) public {
 
-        governance_contract=governance_address;       
+        governance_contract=governance_address; 
+        _classCreated=[0,1,2,3];
+        
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
-        _Fibonacci_epoch[0]=8*60*60; // in test 60 sec
+        _Fibonacci_epoch[0]=1; 
         _genesis_nonce_time[0]=0;
         
         _Symbol[1]="SGM-SASH";
@@ -166,7 +175,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         _Symbol[3]="SASH,SGM";
         _Fibonacci_number[3]=8;
-        _Fibonacci_epoch[3]=8*60*60;
+        _Fibonacci_epoch[3]=1;
         _genesis_nonce_time[3]=0;
         
     }
@@ -204,7 +213,10 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     function getNonceCreated(uint256 class) public override view returns (uint256[] memory){
         return _nonceCreated[class];
     }
-
+    
+    function getClassCreated() public override view returns (uint256[] memory){
+        return _classCreated;
+    }
     
     function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)public override returns (bool) {
         require(msg.sender==governance_contract, "ERC659: operator unauthorized");
@@ -212,6 +224,8 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         _Fibonacci_number[class]=Fibonacci_number;
         _Fibonacci_epoch[class]=Fibonacci_epoch;
         _genesis_nonce_time[class]=0;
+        
+        _classCreated.push(class);
         return true;
     }   
     
@@ -237,6 +251,16 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     function balanceOf(address account, uint256 class, uint256 nonce) public override view returns (uint256){
         require(account != address(0), "ERC659: balance query for the zero address");
         return _balances[account][class][nonce];
+    }
+    
+     
+    function batchBalanceOf(address account, uint256 class) public override view returns(uint256[] memory){
+        uint256[] memory balancesAllNonce = new uint256[](last_bond_nonce[class]);
+        for (uint i = 0; i<last_bond_nonce[class]; i++) {
+            balancesAllNonce[i]=_balances[account][class][i];
+            
+        }
+        return (balancesAllNonce);
     }
     
     function getBondSymbol(uint256 class) view public override returns (string memory){
