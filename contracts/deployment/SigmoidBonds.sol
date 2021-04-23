@@ -225,6 +225,11 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         _Fibonacci_epoch[class]=Fibonacci_epoch;
         _genesis_nonce_time[class]=0;
         
+        for (uint i = 0; i<_classCreated.length; i++) {
+            if (i==class){
+                return true;
+            }
+        }
         _classCreated.push(class);
         return true;
     }   
