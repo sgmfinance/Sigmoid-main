@@ -160,7 +160,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
-        _Fibonacci_epoch[0]=1; 
+        _Fibonacci_epoch[0]=1; // in test 60 sec
         _genesis_nonce_time[0]=0;
         
         _Symbol[1]="SGM-SASH";
@@ -225,6 +225,11 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         _Fibonacci_epoch[class]=Fibonacci_epoch;
         _genesis_nonce_time[class]=0;
         
+        for (uint i = 0; i<_classCreated.length; i++) {
+            if (i==class){
+                return true;
+            }
+        }
         _classCreated.push(class);
         return true;
     }   
@@ -328,21 +333,18 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         last_activeSupply[class]=total_liquidity;
     }
          
-    function createBondClass(uint256 class, string memory bond_symbol, uint256 Fibonacci_number, uint256 Fibonacci_epoch)public override returns (bool) {
-        require(msg.sender==governance_contract, "ERC659: operator unauthorized");
-        _Symbol[class]=bond_symbol;
-        _Fibonacci_number[class]=Fibonacci_number;
-        _Fibonacci_epoch[class]=Fibonacci_epoch;
-        _genesis_nonce_time[class]=0;
-        
-        for (uint i = 0; i<_classCreated.length; i++) {
-            if (i==class){
-                return true;
-            }
+    function _createBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
+    
+        if(last_bond_nonce[class]<nonce){
+            last_bond_nonce[class]=nonce;
         }
-        _classCreated.push(class);
-        return true;
-    }   
+        _nonceCreated[class].push(nonce);
+        _info[class][nonce][1]=_genesis_nonce_time[class] + (nonce) * _Fibonacci_epoch[class];
+        _balances[_to][class][nonce]+=_amount;
+        _activeSupply[class][nonce]+=_amount;
+        emit eventIssueBond(msg.sender, _to, class,nonce, _amount);
+        return(true);
+    }
     
     function _issueBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
         if (totalSupply(class,nonce)==0){
