@@ -388,7 +388,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         require(contract_is_active == true);
         require(msg.sender==bank_contract, "ERC659: operator unauthorized");
         require(_to != address(0), "ERC659: issue bond to the zero address");
-        require(_amount >= 100, "ERC659: invalid amount");
+        require(_amount >= 1*10**16, "ERC659: invalid amount");
         if(_genesis_nonce_time[class]==0){_genesis_nonce_time[class]=now-now % _Fibonacci_epoch[class];}
         uint256  now_nonce=(now-_genesis_nonce_time[class])/_Fibonacci_epoch[class];
         uint256 FibonacciTimeEponge0=1;
