@@ -160,7 +160,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         _Symbol[0]="SASH-USD";
         _Fibonacci_number[0]=8;
-        _Fibonacci_epoch[0]=8*60*60; // in test 60 sec
+        _Fibonacci_epoch[0]=8*60*60;
         _genesis_nonce_time[0]=0;
         
         _Symbol[1]="SGM-SASH";
@@ -345,6 +345,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         emit eventIssueBond(msg.sender, _to, class,nonce, _amount);
         return(true);
     }
+    
     function _issueBond(address _to, uint256 class, uint256 nonce, uint256 _amount) private returns(bool) {
         if (totalSupply(class,nonce)==0){
             _createBond(_to,class,nonce,_amount);
