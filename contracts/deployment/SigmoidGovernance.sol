@@ -365,17 +365,17 @@ contract SigmaGovernance is ISigmoidGovernance{
     mapping (uint256 => uint256)public _proposalNonce;
     
     constructor() public{
-        _proposalClassInfo[0][0] = 28*24*60*60;//timelock
+        _proposalClassInfo[0][0] = 15*24*60*60;//timelock
         _proposalClassInfo[0][1] = 50;//minimum approval percentage needed
         _proposalClassInfo[0][3] = 1;//need arechitect approval
         _proposalClassInfo[0][4] = 1;//maximum excution time
         
-        _proposalClassInfo[1][0] = 14*24*60*60;//timelock
+        _proposalClassInfo[1][0] = 10*24*60*60;//timelock
         _proposalClassInfo[1][1] = 50;//minimum approval percentage needed
         _proposalClassInfo[1][3] = 1;//need arechitect approval
         _proposalClassInfo[1][4] = 1;//maximum excution time
         
-        _proposalClassInfo[2][0] = 7*24*60*60;//timelock
+        _proposalClassInfo[2][0] = 5*24*60*60;//timelock
         _proposalClassInfo[2][1] = 50;//minimum approval percentage needed
         _proposalClassInfo[2][3] = 0;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
@@ -673,12 +673,12 @@ contract SigmaGovernance is ISigmoidGovernance{
 
     function mintAllocationToken(address _to, uint256 SASH_amount, uint256 SGM_amount) public override returns(bool){
          
-        require(allocation_minted[_to][0] + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
+        require(allocation_minted[_to][0] + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed)/ 1e6 * (allocation_ppm[_to][0]));
         ISigmoidTokens(SASH_contract).mint(_to, SASH_amount);
         allocation_minted[_to][0] += SASH_amount;
         SASH_total_allocation_distributed += SASH_amount;
         
-        require(allocation_minted[_to][1] + SGM_amount <= (IERC20(SGM_contract).totalSupply()-SGM_total_allocation_distributed) / 1e6 * (SGM_budget_ppm - SGM_allocation_distributed_ppm));
+        require(allocation_minted[_to][1] + SGM_amount <= (IERC20(SGM_contract).totalSupply()-SGM_total_allocation_distributed) / 1e6 * (allocation_ppm[_to][0]));
         ISigmoidTokens(SGM_contract).mint(_to, SGM_amount);
         allocation_minted[_to][1] += SGM_amount;
         SGM_total_allocation_distributed += SGM_amount;
@@ -694,12 +694,15 @@ contract SigmaGovernance is ISigmoidGovernance{
         require(_proposalAddress[poposal_class][_proposalNonce[poposal_class]] == msg.sender);
         _proposalVoting[poposal_class][proposal_nonce][4] -= 1;
         
-        uint256 total_referral_ppm = first_referral_reward_ppm +first_referral_POS_reward_ppm +second_referral_reward_ppm +second_referral_POS_reward_ppm;
-        require(SASH_allocation_distributed_ppm + SASH_ppm <= SASH_budget_ppm - total_referral_ppm);
-        allocation_ppm[_to][0] = SASH_ppm;
+        uint256 total_referral_ppm = first_referral_reward_ppm + first_referral_POS_reward_ppm + second_referral_reward_ppm + second_referral_POS_reward_ppm;
         
-        require(SGM_allocation_distributed_ppm + SGM_ppm <= SGM_budget_ppm);
+        require(SASH_allocation_distributed_ppm - allocation_ppm[_to][0] + SASH_ppm <= SASH_budget_ppm - total_referral_ppm);
+        allocation_ppm[_to][0] = SASH_ppm;
+        SASH_allocation_distributed_ppm=SASH_allocation_distributed_ppm - allocation_ppm[_to][0] + SASH_ppm;
+        
+        require(SGM_allocation_distributed_ppm  - allocation_ppm[_to][1] + SGM_ppm <= SGM_budget_ppm);
         allocation_ppm[_to][1] = SGM_ppm;
+        SGM_allocation_distributed_ppm = SGM_allocation_distributed_ppm - allocation_ppm[_to][1] + SGM_ppm;
         
         return(true);
     
@@ -741,9 +744,9 @@ contract SigmaGovernance is ISigmoidGovernance{
         uint256 first_referral_SGM_needed = (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * first_referral_POS_Threshold_ppm;
         uint256 second_referral_SGM_needed = (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) /1e6 * second_referral_POS_Threshold_ppm;
         uint256 first_referral_reward_size = SASH_total_amount / 1e6 * first_referral_reward_ppm;
-        uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(first_referral) / second_referral_SGM_needed * 1e5);
+        uint256 first_referral_POS_reward_size = SASH_total_amount / 1e6 * first_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(first_referral) * 1e5 / first_referral_SGM_needed);
         uint256 second_referral_reward_size = SASH_total_amount / 1e6 * second_referral_reward_ppm;
-        uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(second_referral) / second_referral_SGM_needed * 1e5);
+        uint256 second_referral_POS_reward_size = SASH_total_amount / 1e6 * second_referral_POS_reward_ppm / 1e6 * ( IERC20(SGM_contract).balanceOf(second_referral) * 1e5 / second_referral_SGM_needed);
         
         
         if(first_referral_POS_reward_size > SASH_total_amount / 1e6 * first_referral_POS_reward_ppm){
