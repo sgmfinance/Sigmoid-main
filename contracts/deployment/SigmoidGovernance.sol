@@ -377,7 +377,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         
         _proposalClassInfo[2][0] = 5*24*60*60;//timelock
         _proposalClassInfo[2][1] = 50;//minimum approval percentage needed
-        _proposalClassInfo[2][3] = 0;//need arechitect approval
+        _proposalClassInfo[2][3] = 1;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
         
         
