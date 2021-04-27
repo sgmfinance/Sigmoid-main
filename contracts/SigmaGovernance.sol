@@ -233,19 +233,17 @@ interface IUniswapV2Pair {
 
 interface ISigmoidExchange{
     function isActive(bool _contract_is_active) external returns (bool);
-    function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setBondContract(address bond_address) external returns (bool);
-    function setTokenContract(uint256 token_class, address token_address) external returns (bool);
-
+    function setTokenContract(address SASH_contract_address, address SGM_contract_address) external returns (bool);
 }
-
 interface ISigmoidTokens {
     function isActive(bool _contract_is_active) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
+    function setExchangeContract(address exchange_addres) external returns (bool);
     function mint(address _to, uint256 _amount) external returns (bool);
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
@@ -377,7 +375,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         
         _proposalClassInfo[2][0] =3;//timelock
         _proposalClassInfo[2][1] = 50;//minimum approval percentage needed
-        _proposalClassInfo[2][3] = 1;//need arechitect approval
+        _proposalClassInfo[2][3] = 0;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
         
         
@@ -502,7 +500,9 @@ contract SigmaGovernance is ISigmoidGovernance{
         require(bond_contract != address(0));
         require(exchange_contract != address(0));
         
-        ISigmoidBonds(bond_contract).setExchangeContract(exchange_contract);    
+        ISigmoidBonds(bond_contract).setExchangeContract(exchange_contract);   
+        ISigmoidTokens(SASH_contract).setExchangeContract(exchange_contract); 
+        ISigmoidTokens(SGM_contract).setExchangeContract(exchange_contract); 
         
         ISigmoidBonds(bond_contract).setBankContract(bank_contract);
         ISigmoidTokens(SASH_contract).setBankContract(bank_contract);
@@ -538,9 +538,11 @@ contract SigmaGovernance is ISigmoidGovernance{
         
         isActive(false);
         ISigmoidBank(bank_contract).setGovernanceContract(new_governance_address);
+        ISigmoidExchange(exchange_contract).setGovernanceContract(new_governance_address);
         ISigmoidBonds(bond_contract).setGovernanceContract(new_governance_address);
         ISigmoidTokens(SASH_contract).setGovernanceContract(new_governance_address);
-        ISigmoidTokens(SGM_contract).setGovernanceContract(new_governance_address);        
+        ISigmoidTokens(SGM_contract).setGovernanceContract(new_governance_address);       
+        
         ISigmoidGovernance(new_governance_address).isActive(true);
         return(true);
   
@@ -555,7 +557,9 @@ contract SigmaGovernance is ISigmoidGovernance{
         ISigmoidExchange(exchange_contract).isActive(false);
         exchange_contract=new_exchange_address;
 
-        ISigmoidBonds(exchange_contract).setExchangeContract(new_exchange_address);
+        ISigmoidBonds(bond_contract).setExchangeContract(exchange_contract);   
+        ISigmoidTokens(SASH_contract).setExchangeContract(exchange_contract); 
+        ISigmoidTokens(SGM_contract).setExchangeContract(exchange_contract); 
         
         ISigmoidExchange(exchange_contract).isActive(true);
         return(true);
@@ -588,6 +592,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         ISigmoidBonds(bond_contract).isActive(false);
         bond_contract=new_bond_address;        
         ISigmoidBank(bank_contract).setBondContract(new_bond_address);
+        ISigmoidExchange(exchange_contract).setBondContract(new_bond_address);
         ISigmoidBonds(bond_contract).isActive(true);
         
         return(true);
@@ -605,17 +610,20 @@ contract SigmaGovernance is ISigmoidGovernance{
             ISigmoidTokens(SASH_contract).isActive(false);
             SASH_contract=new_token_address;  
             ISigmoidTokens(SASH_contract).isActive(true);
+            ISigmoidExchange(exchange_contract).setTokenContract(new_token_address, SGM_contract);
+        
         }
         
         if (new_token_class == 1){
             ISigmoidTokens(SGM_contract).isActive(false);
             SGM_contract=new_token_address;  
             ISigmoidTokens(SGM_contract).isActive(true);
+            ISigmoidExchange(exchange_contract).setTokenContract(SASH_contract, new_token_address);
         }
         
         ISigmoidBank(bank_contract).setTokenContract(new_token_class, new_token_address);
         ISigmoidBonds(bond_contract).setTokenContract(new_token_class, new_token_address);
-        
+    
         return(true);
         
     }
