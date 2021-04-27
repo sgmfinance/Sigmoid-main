@@ -165,17 +165,17 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         _Symbol[1]="SGM-SASH";
         _Fibonacci_number[1]=8;
-        _Fibonacci_epoch[1]=8*60*60;
+        _Fibonacci_epoch[1]=1;
         _genesis_nonce_time[1]=0;
         
         _Symbol[2]="SGM,SGM";
         _Fibonacci_number[2]=8;
-        _Fibonacci_epoch[2]=8*60*60;
+        _Fibonacci_epoch[2]=1;
         _genesis_nonce_time[2]=0;
         
         _Symbol[3]="SASH,SGM";
         _Fibonacci_number[3]=8;
-        _Fibonacci_epoch[3]=8*60*60;
+        _Fibonacci_epoch[3]=1;
         _genesis_nonce_time[3]=0;
         
     }
