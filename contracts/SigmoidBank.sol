@@ -300,11 +300,13 @@ interface ISigmoidBank{
 
 contract SigmoidBank is ISigmoidBank{
     address public dev_address;
+    
     address public SASH_contract;
     address public SGM_contract;
     address public governance_contract;
     address public bank_contract;
     address public bond_contract;
+    
     bool public contract_is_active;
 
     mapping (uint256 => address) public token_contract;
