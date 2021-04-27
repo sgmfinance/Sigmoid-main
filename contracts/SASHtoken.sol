@@ -168,6 +168,7 @@ interface ISigmoidTokens {
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
+    function setExchangeContract(address exchange_addres) external returns (bool);
     function mint(address _to, uint256 _amount) external returns (bool);
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
@@ -378,11 +379,15 @@ contract SASHtoken is ERC20, ISigmoidTokens{
     string private _name;
     string private _symbol;
     uint8 private _decimals;
-    address public bank_contract;
+    
     address public dev_address;
+    
+    address public bank_contract;
     address public governance_contract;
+    address public exchange_contract;
+
     bool public contract_is_active;
-    /**
+        /**
      * @dev Sets the values for `name`, `symbol`, and `decimals`. All three of
      * these values are immutable: they can only be set once during
      * construction.
@@ -409,12 +414,17 @@ contract SASHtoken is ERC20, ISigmoidTokens{
         require(msg.sender == governance_contract);
         governance_contract = governance_address;
         return(true);
-        
     }
 
     function setBankContract(address bank_addres) public override returns (bool) {
         require(msg.sender == governance_contract);
         bank_contract = bank_addres;
+        return(true);
+    }
+    
+    function setExchangeContract(address exchange_addres) public override returns (bool) {
+        require(msg.sender == governance_contract);
+        exchange_contract = exchange_addres;
         return(true);
     }
     
@@ -426,8 +436,8 @@ contract SASHtoken is ERC20, ISigmoidTokens{
     }
     
     function bankTransfer(address _from, address _to, uint256 _amount) public override returns (bool){
-        require(contract_is_active == true);
-        require(msg.sender==bank_contract); 
+        require(contract_is_active == true );
+        require(msg.sender == bank_contract || msg.sender == exchange_contract); 
         require(_from != address(0), "ERC20: transfer from the zero address");
         require(_to != address(0), "ERC20: transfer to the zero address");
         _transfer(_from, _to, _amount);
