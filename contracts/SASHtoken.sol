@@ -110,6 +110,7 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
+    function LockedBalance(address account) external view returns (uint256);
     function transfer(address recipient, uint256 amount) external returns (bool);
 
     /**
@@ -164,6 +165,7 @@ interface IERC20 {
 }
 
 interface ISigmoidTokens {
+
     function isActive(bool _contract_is_active) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
@@ -213,7 +215,7 @@ contract ERC20 is IERC20 {
         return _balances[account];
     }
 
-    function LockedBalance(address account) public view returns (uint256){
+    function LockedBalance(address account) public override view returns (uint256){
          return(locked_balances[account]);
      }
      
@@ -455,7 +457,7 @@ contract SASH_Airdrop is ERC20, IERC20_airdrop {
         assert(merkleVerify(_proof,merkleRoot,node)==true);
         require(claimStatus(_to)==false, 'SASH Credit Airdrop: Drop already claimed.');
        
-        _mint(_to, _amount*10e17);
+        _mint(_to, _amount*1e18);
         withdrawClaimed[_to]=true;
         
         return true;
