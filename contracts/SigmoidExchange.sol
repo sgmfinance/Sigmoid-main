@@ -335,15 +335,19 @@ contract SigmoidExchange is ISigmoidExchange{
     }
         
     function getAuction(uint256 indexStart, uint256 indexEnd) view public returns(AUCTION[] memory){
-        require(indexStart<indexEnd);
+        require(indexStart<=indexEnd);
+        if(indexEnd>idToCatalogue.length-1){
+            indexEnd=idToCatalogue.length-1;
+        }
         uint256 listLength= indexEnd - indexStart +1;
-        require(listLength<2500 && listLength<idToCatalogue.length);
+        require(listLength<2500 );
         
         
         AUCTION[] memory auctionList = new AUCTION[](listLength);
         
-        for (uint i = 0; i<listLength; i++) {
-            auctionList[i]=idToCatalogue[i];
+        for (uint i = indexStart; i<indexEnd; i++) {
+           
+            auctionList[i-indexStart]=idToCatalogue[i];
             
         }
         
