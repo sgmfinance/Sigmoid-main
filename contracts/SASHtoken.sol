@@ -173,6 +173,19 @@ interface ISigmoidTokens {
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
 
+interface IERC20_airdrop {
+
+    function merkleVerify(bytes32[] calldata proof, bytes32 root, bytes32 leaf) external pure returns (bool);
+    function time_now() external view returns (uint256);
+    function claimStatus(address _to) external view returns (bool);
+
+    function claimAirdrop(bytes32[]  calldata _proof, uint256 airdrop_index, address _to, uint256 _amount) external  returns (bool);
+    
+    function setAirdrop(bytes32 _merkleRoot) external returns (bool);
+    function startClaim() external returns (bool);
+
+}
+
 contract ERC20 is IERC20 {
     using SafeMath for uint256;
 
@@ -303,7 +316,7 @@ contract SASHtoken is ERC20, ISigmoidTokens{
      * these values are immutable: they can only be set once during
      * construction.
      */
-    constructor (address governance_address ) public {
+    constructor ( address governance_address ) public {
         _name = "SASH_token";
         _symbol = "SASH";
         _decimals = 18;
@@ -385,3 +398,85 @@ contract SASHtoken is ERC20, ISigmoidTokens{
         return _decimals;
     }
 }
+
+contract SASH_Airdrop is ERC20, IERC20_airdrop {
+    
+    address public dev_address= msg.sender;
+    
+    // 30st May
+    uint256 public constant event_end = 1622332800;
+    
+    // 120 days after
+    uint256 public constant claim_end= 10368000;
+    
+    bool public claim_started=false;
+    bool public merkleRoot_set=false;
+    bytes32 public merkleRoot;//airdrop_list_mercleRoof
+    mapping (address=>bool) public withdrawClaimed;
+  
+    function merkleVerify(bytes32[] memory proof, bytes32 root, bytes32 leaf) public pure override returns (bool) {
+        bytes32 computedHash = leaf;
+    
+        for (uint256 i = 0; i < proof.length; i++) {
+            bytes32 proofElement = proof[i];
+    
+            if (computedHash <= proofElement) {
+                // Hash(current computed hash + current element of the proof)
+                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
+            } else {
+                // Hash(current element of the proof + current computed hash)
+                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
+            }
+        }
+    
+        // Check if the computed hash (root) is equal to the provided root
+        return computedHash == root;
+    }
+  
+    function claimStatus(address _to) public view override returns (bool) {
+         
+         if(withdrawClaimed[_to]==true){
+            return true;}
+            
+         return false;
+    }
+    
+    function time_now() public view override returns (uint256) {
+          return now;
+       
+    }
+    
+    // _amount is the amount of SASH Credit no need to enter decimals _amount 1  = 1 SASH
+    function claimAirdrop(bytes32[]  memory _proof, uint256 airdrop_index, address _to, uint256 _amount) public override returns (bool) {
+        require(_amount > 0,'SASH Credit Airdrop: amount must >0.');
+        require(claim_started==true,'SASH Credit Airdrop:claim not started yet.');
+        require(now<=event_end+claim_end, 'SASH Credit Airdrop: Time limit passed.');
+        bytes32 node = keccak256(abi.encodePacked(airdrop_index, _to, _amount));
+        assert(merkleVerify(_proof,merkleRoot,node)==true);
+        require(claimStatus(_to)==false, 'SASH Credit Airdrop: Drop already claimed.');
+       
+        _mint(_to, _amount*10e17);
+        withdrawClaimed[_to]=true;
+        
+        return true;
+    }
+    
+    function setAirdrop(bytes32 _merkleRoot) public override returns (bool) {
+        require(msg.sender == dev_address,'SASH Credit Airdrop: Dev only.');
+        require(now>=event_end, 'SASH Credit Airdrop: too early.');
+        require(claim_started==false, 'SASH Credit Airdrop: already started.');
+        merkleRoot = _merkleRoot;
+        merkleRoot_set=true;
+        return true;
+    }
+    
+    function startClaim()public override returns (bool) {
+        require(msg.sender == dev_address,'SASH Credit Airdrop: Dev only.');
+        require(now>=event_end, 'SASH Credit Airdrop: too early.');
+        require(claim_started==false, 'SASH Credit Airdrop: Claim already started.');
+        require(merkleRoot_set==true, 'SASH Credit Airdrop: Merkle root invalid.');
+        claim_started = true;
+        return true;
+    }
+
+    }
