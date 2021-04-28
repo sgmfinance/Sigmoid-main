@@ -204,6 +204,15 @@ contract SigmoidExchange is ISigmoidExchange{
     address public bond_contract;
     
     bool public contract_is_active;
+    uint256 stampDutyPpm;
+    mapping(address=>uint256) auction_deposit;
+    
+    
+    constructor  (address governance_address) public {
+        governance_contract=governance_address;
+        
+    }
+    
     
     struct AUCTION  {
         
@@ -238,7 +247,6 @@ contract SigmoidExchange is ISigmoidExchange{
     
     AUCTION[] idToCatalogue;
     
-    mapping(address=>uint256) auction_deposit;
 
     function isActive(bool _contract_is_active) public override returns (bool){
          contract_is_active = _contract_is_active;
@@ -310,13 +318,22 @@ contract SigmoidExchange is ISigmoidExchange{
         return(true);
     }
     
-    function _stampduty(address _to, uint256 _auctionId) private returns(bool) {
+    function _bidTransfer(address _from, address _to, uint256 amount) private returns(bool) {
         
-        require(IERC659(idToCatalogue[_auctionId].bondAddress).transferBond( address(this), _to, idToCatalogue[_auctionId].bondClass, idToCatalogue[_auctionId].bondNonce, idToCatalogue[_auctionId].bondAmount),"can't move to custody");
-   
-        return(true);
+        if (stampDutyPpm>0){
+            ISigmoidTokens(SASH_contract).bankTransfer (_from, _to, amount);
+            return(true);
+        
+        }
+        
+        else{ 
+            uint256 stampDutySize = amount/1e6*stampDutyPpm;
+            ISigmoidTokens(SASH_contract).bankTransfer (_from, address(this), amount);
+            auction_deposit[_to]+=amount-stampDutySize;
+            return(true);
+        }
     }
-    
+        
     function getAuction(uint256 indexStart, uint256 indexEnd) view public returns(AUCTION[] memory){
         require(indexStart<indexEnd);
         uint256 listLength= indexEnd - indexStart +1;
@@ -343,7 +360,6 @@ contract SigmoidExchange is ISigmoidExchange{
         return(bidPrice);
     }
     
-    
     function addAuction(AUCTION memory _auction) public returns(bool){
         require(msg.sender==_auction.seller,"operator unauthorized");
         _auction.auctionTimestamp=now;
@@ -358,7 +374,6 @@ contract SigmoidExchange is ISigmoidExchange{
         return(true);
     }
 
-
     function cancelAuction(uint256 _auctionId) public returns(bool){
         require(msg.sender==idToCatalogue[_auctionId].seller,"operator unauthorized"); 
         
@@ -367,14 +382,13 @@ contract SigmoidExchange is ISigmoidExchange{
         require(_removeCustody(msg.sender,_auctionId)==true,"can't move to custody");
         return(true);
     }
-    
-    
+ 
     function bid(address _to, uint256 _auctionId) public returns(bool){
 
         require( now < idToCatalogue[_auctionId].auctionTimestamp + idToCatalogue[_auctionId].auctionDuration,"auction ended"); 
         
         uint256 bidPrice=getBidPrice(_auctionId);
-        require(ISigmoidTokens(SASH_contract).bankTransfer (msg.sender,idToCatalogue[_auctionId].seller, bidPrice));
+        require(_bidTransfer(msg.sender, idToCatalogue[_auctionId].seller,bidPrice )==true);
         
         require(_cancelAuction(_auctionId)==true,"can't cancel auction");
         require(_removeCustody(_to, _auctionId)==true,"can't move to custody");
