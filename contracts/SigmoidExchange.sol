@@ -207,7 +207,7 @@ contract SigmoidExchange is ISigmoidExchange{
     
     struct AUCTION  {
         
-        // Auction_clossed 0empty 1started  2ended
+        // Auction_clossed false empty or ended   1 auction goingon
         bool auctionStatut;
         
         // seller address
@@ -216,8 +216,11 @@ contract SigmoidExchange is ISigmoidExchange{
         // starting price
         uint256 startingPrice;
         
+        // Auction started
+        uint256 auctionTimestamp;
+        
         // Auction duration
-        uint256 auctionEnded;
+        uint256 auctionDuration;
         
         // bond_address
         address bondAddress;
@@ -231,12 +234,6 @@ contract SigmoidExchange is ISigmoidExchange{
         // Bonds
         uint256[] bondAmount;
         
-        //higestBidder address
-        address higestBidderAddress;
-        
-        //higestBidder price
-        uint256 higestBidderPrice;
-        
     }
     
     AUCTION[] idToCatalogue;
@@ -248,7 +245,7 @@ contract SigmoidExchange is ISigmoidExchange{
          return(contract_is_active);
          
      }
-
+     
     function setGovernanceContract(address governance_address) public override returns (bool) {
         require(msg.sender==governance_contract,"ERC659: operator unauthorized");
         governance_contract = governance_address;
@@ -266,7 +263,7 @@ contract SigmoidExchange is ISigmoidExchange{
         bond_contract=bond_address;
         return (true);
     }   
-      
+    
     function setTokenContract(address SASH_contract_address, address SGM_contract_address) public override returns (bool) {
         require(msg.sender==governance_contract,"ERC659: operator unauthorized");
         
@@ -293,19 +290,12 @@ contract SigmoidExchange is ISigmoidExchange{
         return(false);
     }
     
-    function _exchangeTransferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) private{
-        
-    }
-    
     function _addCustody( AUCTION memory _auction) private returns(bool) {
-
 
         require(IERC659(_auction.bondAddress).transferBond(_auction.seller, address(this), _auction.bondClass, _auction.bondNonce, _auction.bondAmount),"can't move to custody");
    
-     
         return(true);
     }
-    
         
     function _removeCustody(address _to, uint256 _auctionId) private returns(bool) {
         
@@ -321,10 +311,27 @@ contract SigmoidExchange is ISigmoidExchange{
         return(true);
     }
     
+    function getAuction() view public returns(AUCTION[] memory){
 
+        return(idToCatalogue);
+    }
+    
+    function getBidPrice(uint256 _auctionId) view public returns(uint256){
+        uint256 time_passed = now - idToCatalogue[_auctionId].auctionTimestamp;
+        require(time_passed<idToCatalogue[_auctionId].auctionDuration,"auction ended");
+        uint256 bidPrice = idToCatalogue[_auctionId].startingPrice / 1e6 *( 1e6-(idToCatalogue[_auctionId].auctionDuration *1e6 / time_passed));
+        if (bidPrice < idToCatalogue[_auctionId].startingPrice/10){
+            bidPrice = idToCatalogue[_auctionId].startingPrice/10;
+        }
+        return(bidPrice);
+    }
+    
+    
     function addAuction(AUCTION memory _auction) public returns(bool){
-        require(msg.sender==_auction.seller,"operator unauthorized"); 
-        require(_auction.auctionEnded - 24*60*60 > now,"timestamp error"); 
+        require(msg.sender==_auction.seller,"operator unauthorized");
+        _auction.auctionTimestamp=now;
+        require(_auction.auctionDuration>=24*60*60,"timestamp error"); 
+        require(_auction.auctionDuration<=7*24*60*60,"timestamp error"); 
         _auction.auctionStatut = true;
         
         require(_auction.bondClass.length == _auction.bondNonce.length && _auction.bondNonce.length  == _auction.bondAmount.length,"ERC659:input error");
@@ -334,75 +341,27 @@ contract SigmoidExchange is ISigmoidExchange{
         return(true);
     }
 
+
     function cancelAuction(uint256 _auctionId) public returns(bool){
         require(msg.sender==idToCatalogue[_auctionId].seller,"operator unauthorized"); 
-        require(idToCatalogue[_auctionId].higestBidderPrice != 0 ,"can't cancel bided order"); 
-        
+
         require(_cancelAuction(_auctionId)==true,"can't cancel auction");
         require(_removeCustody(msg.sender,_auctionId)==true,"can't move to custody");
         return(true);
     }
     
-    function bid( uint256 _auctionId, uint256 _bid) public returns(bool){
+    
+    function bid(address _to, uint256 _auctionId) public returns(bool){
 
-        require( now < idToCatalogue[_auctionId].auctionEnded ,"auction ended"); 
+        require( now < idToCatalogue[_auctionId].auctionTimestamp + idToCatalogue[_auctionId].auctionDuration,"auction ended"); 
         
-        require(_bid >= idToCatalogue[_auctionId].higestBidderPrice/100*105 ,"new bid must be higher then 105% of the previous bid");
-        
-        require(ISigmoidTokens(SASH_contract).bankTransfer(msg.sender, address(this), _bid));
-        idToCatalogue[_auctionId].higestBidderPrice=_bid;
-        idToCatalogue[_auctionId].higestBidderAddress=msg.sender;
-        return(true);
-    }
-    
-    
-    function bidderClaimAuction(address _to, uint256 _auctionId) public returns(bool){
-        require(msg.sender==idToCatalogue[_auctionId].higestBidderAddress || _to==idToCatalogue[_auctionId].higestBidderAddress ,"operator unauthorized"); 
-        require(now > idToCatalogue[_auctionId].auctionEnded  ,"can't claim before the end of the auction"); 
+        uint256 bidPrice=getBidPrice(_auctionId);
+        require(ISigmoidTokens(SASH_contract).bankTransfer (msg.sender,idToCatalogue[_auctionId].seller, bidPrice));
         
         require(_cancelAuction(_auctionId)==true,"can't cancel auction");
         require(_removeCustody(_to,_auctionId)==true,"can't move to custody");
-         
+ 
         return(true);
     }
-    
-    function clientCollectAuction(address _to, uint256 _auctionId) public  returns(bool) {
-        
-      
-        return(true);
-    }
-    
-    // function cancelMakerOrder(address _from, uint256[] memory _class, uint256[] memory _nonce, uint256[] memory _pricePmm, uint256[] memory _amount, uint256 _margin) public returns(bool){
-    //     require(msg.sender==_from,"ERC659: operator unauthorized"); 
-        
-    //     require(_class.length == _nonce.length && _class.length  == _class.length,"ERC659:input error");
-    //     require(_class.length + _pricePmm.length == _nonce.length + _amount.length, "ERC659:input error");
-        
-    //     for (uint i=0; i<_class.length; i++) {
-    //         require(order_book[_class[i]][_nonce[i]][_pricePmm[i]][_from]>= _amount[i],"dont have enough maker order");
-
-    //         order_book[_class[i]][_nonce[i]][_pricePmm[i]][_from]-= _amount[i];
-    //     }
-    //     require(margin[_from] >= _margin, "dont have enough margin");
-    //     require(ISigmoidTokens(SASH_contract).bankTransfer( address(this), _from, _margin ), "not enough balance");
-    //     margin[_from]-=_margin;
-    //     return(true);
-    // }
-        
-    // function takeOrder(address _from, uint256[] memory _class, uint256[] memory _nonce, uint256[] memory _pricePmm, uint256[] memory _amount) public returns(bool){
-    //     require(msg.sender==_from,"ERC659: operator unauthorized"); 
-        
-    //     require(_class.length == _nonce.length && _class.length  == _class.length,"ERC659:input error");
-    //     require(_class.length + _pricePmm.length == _nonce.length + _amount.length, "ERC659:input error");
-        
-    //     for (uint i=0; i<_class.length; i++) {
-    //         require(order_book[_class[i]][_nonce[i]][_pricePmm[i]][_from]>= _amount[i],"dont have enough maker order");
-    //         require(ISigmoidTokens(SASH_contract).bankTransfer( address(this),_from, _amount[i]/1e6 *_pricePmm[i] ), "not enough balance");
-    //         order_book[_class[i]][_nonce[i]][_pricePmm[i]][_from]-= _amount[i];
-    //     }
-    //     return(true);
-    // }
-    
-    
     
 }
