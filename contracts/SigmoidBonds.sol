@@ -74,6 +74,13 @@ interface IERC659 {
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
+    
+    
+    function batchActiveSupply( uint256 class ) external view returns (uint256);
+    function batchBurnedSupply( uint256 class ) external view returns (uint256);
+    function batchRedeemedSupply( uint256 class ) external view returns (uint256);
+    function batchTotalSupply( uint256 class ) external view returns (uint256);
+
    
     function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function getClassCreated() external view returns (uint256[] memory);
@@ -234,10 +241,6 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return true;
     }   
     
-    function totalSupply( uint256 class, uint256 nonce) public override view returns (uint256) {
-    
-       return _activeSupply[class][nonce]+_burnedSupply[class][nonce]+_redeemedSupply[class][nonce];
-    }
     
     function activeSupply( uint256 class, uint256 nonce) public override view returns (uint256) {
     
@@ -253,11 +256,53 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return _redeemedSupply[class][nonce];
     }
     
+    function totalSupply( uint256 class, uint256 nonce) public override view returns (uint256) {
+    
+       return _activeSupply[class][nonce]+_burnedSupply[class][nonce]+_redeemedSupply[class][nonce];
+    }
+    
+    
+    
+    function batchActiveSupply( uint256 class) public override view returns (uint256) {
+       
+       uint256 _batchActiveSupply;
+
+            for (uint i=0; i<=last_bond_nonce[class]; i++) {
+                _batchActiveSupply += _activeSupply[class][i]+_redeemedSupply[class][i];
+                }
+       return _batchActiveSupply;
+    }
+
+    function batchBurnedSupply( uint256 class) public override view  returns (uint256) {
+    
+        uint256 _batchBurnedSupply;
+
+        for (uint i=0; i<=last_bond_nonce[class]; i++) {
+                _batchBurnedSupply += _burnedSupply[class][i]+_burnedSupply[class][i];
+        }
+        return _batchBurnedSupply;
+    }
+    
+    function batchRedeemedSupply(  uint256 class) public override view  returns (uint256) {
+    
+        uint256 _batchRedeemedSupply;
+
+        for (uint i=0; i<=last_bond_nonce[class]; i++) {
+            _batchRedeemedSupply += _redeemedSupply[class][i] + _redeemedSupply[class][i];
+        }
+        return _batchRedeemedSupply;
+    }
+       
+     function batchTotalSupply( uint256 class) public override view returns (uint256) {
+ 
+       return batchActiveSupply(class)+batchBurnedSupply(class)+batchRedeemedSupply(class);
+    }
+    
+
     function balanceOf(address account, uint256 class, uint256 nonce) public override view returns (uint256){
         require(account != address(0), "ERC659: balance query for the zero address");
         return _balances[account][class][nonce];
     }
-    
      
     function batchBalanceOf(address account, uint256 class) public override view returns(uint256[] memory){
         uint256[] memory balancesAllNonce = new uint256[](last_bond_nonce[class]);
