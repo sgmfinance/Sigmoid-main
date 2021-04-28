@@ -102,7 +102,7 @@ interface IERC20 {
      * @dev Returns the amount of tokens owned by `account`.
      */
     function balanceOf(address account) external view returns (uint256);
-
+    function LockedBalance(address account) external view returns (uint256);
     /**
      * @dev Moves `amount` tokens from the caller's account to `recipient`.
      *
@@ -199,7 +199,7 @@ contract ERC20 is IERC20 {
         return _balances[account];
     }
 
-    function LockedBalance(address account) public view returns (uint256){
+    function LockedBalance(address account) public override view returns (uint256){
          return(locked_balances[account]);
      }
      
