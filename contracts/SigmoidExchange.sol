@@ -274,6 +274,11 @@ contract SigmoidExchange is ISigmoidExchange{
     }
     
     function _addAuction(AUCTION memory _auction) private returns(bool) {
+        if (idToCatalogue.length == 0){
+            idToCatalogue.push(_auction);
+            return(true);
+        }
+        
         for (uint i=0; i<idToCatalogue.length; i++) {
             if(idToCatalogue[i].auctionStatut == false){
                 idToCatalogue[i] = _auction;
@@ -282,7 +287,8 @@ contract SigmoidExchange is ISigmoidExchange{
                
         }
         
-        return(false);
+        idToCatalogue.push(_auction);
+        return(true);
     }
     
     function _cancelAuction(uint256 _auctionId) private returns(bool) {
@@ -311,9 +317,20 @@ contract SigmoidExchange is ISigmoidExchange{
         return(true);
     }
     
-    function getAuction() view public returns(AUCTION[] memory){
-
-        return(idToCatalogue);
+    function getAuction(uint256 indexStart, uint256 indexEnd) view public returns(AUCTION[] memory){
+        require(indexStart<indexEnd);
+        uint256 listLength= indexEnd - indexStart +1;
+        require(listLength<2500 && listLength<idToCatalogue.length);
+        
+        
+        AUCTION[] memory auctionList = new AUCTION[](listLength);
+        
+        for (uint i = 0; i<listLength; i++) {
+            auctionList[i]=idToCatalogue[i];
+            
+        }
+        
+        return(auctionList);
     }
     
     function getBidPrice(uint256 _auctionId) view public returns(uint256){
@@ -344,7 +361,8 @@ contract SigmoidExchange is ISigmoidExchange{
 
     function cancelAuction(uint256 _auctionId) public returns(bool){
         require(msg.sender==idToCatalogue[_auctionId].seller,"operator unauthorized"); 
-
+        
+        require(idToCatalogue[_auctionId].auctionStatut==true,"can't cancel auction");
         require(_cancelAuction(_auctionId)==true,"can't cancel auction");
         require(_removeCustody(msg.sender,_auctionId)==true,"can't move to custody");
         return(true);
@@ -359,7 +377,7 @@ contract SigmoidExchange is ISigmoidExchange{
         require(ISigmoidTokens(SASH_contract).bankTransfer (msg.sender,idToCatalogue[_auctionId].seller, bidPrice));
         
         require(_cancelAuction(_auctionId)==true,"can't cancel auction");
-        require(_removeCustody(_to,_auctionId)==true,"can't move to custody");
+        require(_removeCustody(_to, _auctionId)==true,"can't move to custody");
  
         return(true);
     }
