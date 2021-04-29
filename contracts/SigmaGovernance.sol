@@ -75,8 +75,18 @@ interface IERC659 {
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
+    
+    function batchActiveSupply( uint256 class ) external view returns (uint256);
+    function batchBurnedSupply( uint256 class ) external view returns (uint256);
+    function batchRedeemedSupply( uint256 class ) external view returns (uint256);
+    function batchTotalSupply( uint256 class ) external view returns (uint256);
+
     function getNonceCreated(uint256 class) external view returns (uint256[] memory);
+    function getClassCreated() external view returns (uint256[] memory);
+    
     function balanceOf(address account, uint256 class, uint256 nonce) external view returns (uint256);
+    function batchBalanceOf(address account, uint256 class) external view returns(uint256[] memory);
+    
     function getBondSymbol(uint256 class) view external returns (string memory);
     function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
     function bondIsRedeemable(uint256 class, uint256 nonce) external view returns (bool);
@@ -92,6 +102,7 @@ interface IERC659 {
     event eventBurnBond(address _operator, address _from, uint256 class, uint256 nonce, uint256 _amount);
     event eventTransferBond(address _operator, address _from, address _to, uint256 class, uint256 nonce, uint256 _amount);
 }
+
 
 interface IERC20 {
     /**
@@ -238,8 +249,12 @@ interface ISigmoidExchange{
     function setBondContract(address bond_address) external returns (bool);
     function setTokenContract(address SASH_contract_address, address SGM_contract_address) external returns (bool);
 }
+
+
 interface ISigmoidTokens {
+
     function isActive(bool _contract_is_active) external returns (bool);
+    function setPhase(uint256 phase) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
@@ -259,6 +274,7 @@ interface ISigmoidBonds{
 
 interface ISigmoidBank{
     function isActive(bool _contract_is_active) external returns (bool);
+    function setPhase(uint256 phase) external returns (bool);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
     function setBondContract(address bond_address) external returns (bool);
@@ -268,7 +284,6 @@ interface ISigmoidBank{
     function checkIntheList(address contract_address) view external returns (bool);
     function migratorLP(address _to, address tokenA, address tokenB) external returns (bool);
 
-    
     function powerX(uint256 power_root, uint256 num,uint256 num_decimals)  pure external returns (uint256);
     function logX(uint256 log_root,uint256 log_decimals, uint256 num)  pure external returns (uint256);
     
@@ -276,7 +291,7 @@ interface ISigmoidBank{
     function getBondExchangeRateUSDtoSASH(uint256 amount_USD_in) view external returns (uint256);
     function getBondExchangeRatSGMtoSASH(uint256 amount_SGM_out) view external returns (uint256);
     function getBondExchangeRateSASHtoSGM(uint256 amount_SASH_in) view external returns (uint256);
-    
+    function buyWhitelistSASHBondWithUSD(bytes32[] calldata proof, address contract_address, uint256 index, address _to, uint256 amount, uint256 amount_USD_in) external returns (bool);
     function buySASHBondWithUSD(address contract_address, address _to, uint256 amount_USD_in) external returns (bool);
     function buySGMBondWithSASH(address _to, uint256 amount_SASH_in) external returns (bool);
     function buyVoteBondWithSGM(address _from, address _to, uint256 amount_SGM_in) external returns (bool);
@@ -321,6 +336,7 @@ interface ISigmoidGovernance{
 contract SigmaGovernance is ISigmoidGovernance{
     address public dev_address;
     address public CSO_address;
+    address public marketing_team_address;
     address public SASH_contract;
     address public SGM_contract;
     address public governance_contract;
@@ -333,7 +349,13 @@ contract SigmaGovernance is ISigmoidGovernance{
     
     uint256 SASH_proposal_claimed;
     uint256 SGM_proposal_claimed;
-    
+            
+    uint256 phase1Start = 1622505600;
+    uint256 phase2Start = 1625097600;
+    uint256 phase3Start = 1627776000;
+    uint256 phase4Start = 1630454400;
+        
+        
     uint256 SASH_budget_ppm = 1e5;
     uint256 SGM_budget_ppm = 1e5;
     
@@ -362,7 +384,17 @@ contract SigmaGovernance is ISigmoidGovernance{
     
     mapping (uint256 => uint256)public _proposalNonce;
     
-    constructor() public{
+    constructor(address _marketing_team_address, address _CSO_address) public{
+        marketing_team_address =_marketing_team_address;
+        allocation_ppm[dev_address][0] = 2e4;
+        allocation_ppm[dev_address][1] = 6e4;
+        
+        allocation_ppm[marketing_team_address][0] = 2e4;
+        allocation_ppm[marketing_team_address][1] = 2e4;
+        
+        SASH_total_allocation_distributed = 85e3;
+        SGM_total_allocation_distributed = 8e4;
+
         _proposalClassInfo[0][0] = 3;//timelock
         _proposalClassInfo[0][1] = 50;//minimum approval percentage needed
         _proposalClassInfo[0][3] = 1;//need arechitect approval
@@ -378,9 +410,8 @@ contract SigmaGovernance is ISigmoidGovernance{
         _proposalClassInfo[2][3] = 0;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
         
-        
-        dev_address=msg.sender;
-        CSO_address=msg.sender;   
+        dev_address = msg.sender;
+        CSO_address = _CSO_address;   
       
     }
     
@@ -388,7 +419,41 @@ contract SigmaGovernance is ISigmoidGovernance{
          contract_is_active = _contract_is_active;
          return(contract_is_active);
      }
-         
+     
+    function Phase (uint256 phase) public returns (bool){
+        if (phase == 1)
+        {
+            require(now>=phase1Start);
+            assert(ISigmoidTokens(SASH_contract).setPhase(1));
+            assert(ISigmoidBank(bank_contract).setPhase(1));
+            return(true);
+        }
+        
+        if (phase == 2)
+        {
+            require(now>=phase2Start);
+            assert(ISigmoidTokens(SASH_contract).setPhase(2));
+            assert(ISigmoidBank(bank_contract).setPhase(2));
+            return(true);
+        }
+        
+        if (phase == 3)
+        {
+            require(now>=phase3Start);
+            assert(ISigmoidTokens(SASH_contract).setPhase(3));
+            assert(ISigmoidBank(bank_contract).setPhase(3));
+            return(true);
+        }
+        
+        if (phase == 4)
+        {
+            require(now>=phase4Start);
+            assert(ISigmoidTokens(SASH_contract).setPhase(4));
+            assert(ISigmoidBank(bank_contract).setPhase(4));
+            return(true);
+        }
+        return(false);
+    }
         
     function _mintReferralReward(address _to, uint256 SASH_amount) private returns(bool){
         require(SASH_proposal_claimed + SASH_amount <= (IERC20(SASH_contract).totalSupply()-SASH_total_allocation_distributed) / 1e6 * (SASH_budget_ppm - SASH_allocation_distributed_ppm));
