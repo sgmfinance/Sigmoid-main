@@ -164,10 +164,13 @@ interface IERC20 {
 }
 
 interface ISigmoidTokens {
+
     function isActive(bool _contract_is_active) external returns (bool);
+    function setPhase(uint256 phase) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
+    function setExchangeContract(address exchange_addres) external returns (bool);
     function mint(address _to, uint256 _amount) external returns (bool);
     function bankTransfer(address _from, address _to, uint256 _amount) external returns (bool);
 }
