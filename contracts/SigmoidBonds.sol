@@ -75,13 +75,11 @@ interface IERC659 {
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
     
-    
     function batchActiveSupply( uint256 class ) external view returns (uint256);
     function batchBurnedSupply( uint256 class ) external view returns (uint256);
     function batchRedeemedSupply( uint256 class ) external view returns (uint256);
     function batchTotalSupply( uint256 class ) external view returns (uint256);
 
-   
     function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function getClassCreated() external view returns (uint256[] memory);
     
@@ -190,7 +188,6 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
      function isActive(bool _contract_is_active) public override returns (bool){
          contract_is_active = _contract_is_active;
          return(contract_is_active);
-         
      }
      
      function setGovernanceContract(address governance_address) public override returns (bool) {
@@ -241,11 +238,11 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return true;
     }   
     
-    
     function activeSupply( uint256 class, uint256 nonce) public override view returns (uint256) {
     
        return _activeSupply[class][nonce];
     }
+    
     function burnedSupply( uint256 class, uint256 nonce) public override view  returns (uint256) {
     
         return _burnedSupply[class][nonce];
@@ -260,8 +257,6 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
     
        return _activeSupply[class][nonce]+_burnedSupply[class][nonce]+_redeemedSupply[class][nonce];
     }
-    
-    
     
     function batchActiveSupply( uint256 class) public override view returns (uint256) {
        
@@ -293,12 +288,11 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return _batchRedeemedSupply;
     }
        
-     function batchTotalSupply( uint256 class) public override view returns (uint256) {
+    function batchTotalSupply( uint256 class) public override view returns (uint256) {
  
        return batchActiveSupply(class)+batchBurnedSupply(class)+batchRedeemedSupply(class);
     }
     
-
     function balanceOf(address account, uint256 class, uint256 nonce) public override view returns (uint256){
         require(account != address(0), "ERC659: balance query for the zero address");
         return _balances[account][class][nonce];
@@ -318,7 +312,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         return _Symbol[class]; 
     } 
     
-    function getBondInfo(uint256 class, uint256 nonce) public override view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6) {
+    function getBondInfo(uint256 class, uint256 nonce) public override view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5, uint256 info6) {
         BondSymbol=_Symbol[class];
         timestamp=_info[class][nonce][1];
         info2=_info[class][nonce][2];
@@ -480,7 +474,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
             require(_balances[_from][class][nonce[i]] >= _amount[i], "ERC659: not enough bond for redemption");
             require(bondIsRedeemable(class,nonce[i])==true, "ERC659: can't redeem bond before it's redemption day");
             require(_redeemBond(_from,class,nonce[i],_amount[i]));
-            
+             
             if(last_bond_redeemed[class] < nonce[i]){
 
             _writeLastLiquidity(class,nonce[i]);
@@ -493,6 +487,7 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
 
        
     }
+    
     function transferBond(address _from, address _to, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external override returns(bool){ 
         require(contract_is_active == true);
         for (uint n=0; n<nonce.length; n++) {
@@ -505,14 +500,13 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         }
         return(true);
     }
+   
     function burnBond(address _from, uint256[] calldata class, uint256[] calldata nonce, uint256[] calldata _amount) external override returns(bool){
         require(contract_is_active == true);
         for (uint n=0; n<nonce.length; n++) {
             require(msg.sender==bank_contract || msg.sender==_from, "ERC659: operator unauthorized");
             require(_balances[_from][class[n]][nonce[n]] >= _amount[n], "ERC659: not enough bond to burn");
             require(_burnBond(_from, class[n], nonce[n], _amount[n]));
-           
-            
         }
         return(true);
     }
