@@ -315,7 +315,7 @@ interface ISigmoidGovernance{
     
     function changeReferralPolicy(uint256 poposal_class, uint256 proposal_nonce, uint256 new_1st_referral_reward_ppm, uint256 new_1st_referral_POS_reward_ppm, uint256 new_2nd_referral_reward_ppm, uint256 new_2nd_referral_POS_reward_ppm, uint256 new_first_referral_POS_Threshold_ppm, uint256 new_second_referral_POS_Threshold_ppm) external returns(bool);
     function claimReferralReward(address first_referral, address second_referral, uint256 SASH_total_amount) external returns(bool);
-    function getReferralPolicy(uint256 index) external view returns(uint256);
+    function getReferralPolicy() external view returns(uint256[6] memory referral_policy);
 }
 
 contract SigmaGovernance is ISigmoidGovernance{
@@ -373,7 +373,7 @@ contract SigmaGovernance is ISigmoidGovernance{
         _proposalClassInfo[1][3] = 1;//need arechitect approval
         _proposalClassInfo[1][4] = 1;//maximum excution time
         
-        _proposalClassInfo[2][0] =3;//timelock
+        _proposalClassInfo[2][0] = 3;//timelock
         _proposalClassInfo[2][1] = 50;//minimum approval percentage needed
         _proposalClassInfo[2][3] = 0;//need arechitect approval
         _proposalClassInfo[2][4] = 120;//maximum excution time
@@ -780,29 +780,13 @@ contract SigmaGovernance is ISigmoidGovernance{
         return(true);
     }
     
-    function getReferralPolicy(uint256 index) public view override returns(uint256){
-        if(index == 0){
-            return(first_referral_reward_ppm);
-        }
-        
-        if(index == 1){
-            return(first_referral_POS_reward_ppm);
-        }
-        
-        if(index == 2){
-            return(second_referral_reward_ppm);
-        }
-        
-        if(index == 3){
-            return(second_referral_POS_reward_ppm);
-        }
-        
-        if(index == 4){
-            return(first_referral_POS_Threshold_ppm);
-        }
-        
-        if(index == 5){
-            return(second_referral_POS_Threshold_ppm);
-        }
+    function getReferralPolicy() public view override returns(uint256[6] memory referral_policy){
+        referral_policy[0]=first_referral_reward_ppm;
+        referral_policy[1]=first_referral_POS_reward_ppm;
+        referral_policy[2]=second_referral_reward_ppm;
+        referral_policy[3]=second_referral_POS_reward_ppm;
+        referral_policy[4]=first_referral_POS_Threshold_ppm;
+        referral_policy[5]=second_referral_POS_Threshold_ppm;
     }
+
 }
