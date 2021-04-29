@@ -167,6 +167,7 @@ interface IERC20 {
 interface ISigmoidTokens {
 
     function isActive(bool _contract_is_active) external returns (bool);
+    function setPhase(uint256 phase) external returns (bool);
     function maxiumuSupply() external view returns (uint256);
     function setGovernanceContract(address governance_address) external returns (bool);
     function setBankContract(address bank_address) external returns (bool);
@@ -183,22 +184,23 @@ interface IERC20_airdrop {
 
     function claimAirdrop(bytes32[]  calldata _proof, uint256 airdrop_index, address _to, uint256 _amount) external  returns (bool);
     
-    function setAirdrop(bytes32 _merkleRoot) external returns (bool);
+    function setAirdrop(bytes32 _merkleRoot, uint256 _total_airdrop) external returns (bool);
     function startClaim() external returns (bool);
 
 }
 
 contract ERC20 is IERC20 {
     using SafeMath for uint256;
-
+    
+    uint public phase_now;
+        
     mapping (address => uint256) private _balances;
-
     mapping (address => mapping (address => uint256)) private _allowances;
-    mapping (address => uint256) private locked_balances;
+    mapping (address => uint256) public locked_balances;
     
     uint256 public _totalSupply;
     uint256 public _maxiumuSupply;
-
+    uint256 public total_airdrop;
     /**
      * @dev See {IERC20-totalSupply}.
      */
@@ -215,44 +217,67 @@ contract ERC20 is IERC20 {
         return _balances[account];
     }
 
+    
     function LockedBalance(address account) public override view returns (uint256){
-         return(locked_balances[account]);
-     }
-     
-    function _CheckLockedBalance(address account, uint256 amount) public view returns (bool){
-         if(amount > locked_balances[account]){
-             return(false);
+          if(_totalSupply / 1e6 * 15e3 >= total_airdrop){
+             return(0);
          }
+         
+         uint256 airdrop_blocked_ppm = 1e6 - (_totalSupply/1e6 * 15e3) * 1e6 / total_airdrop; 
+         return (locked_balances[account] / 1e6 * airdrop_blocked_ppm);
+
+    }
+     
+    function CheckLockedBalance(address account, uint256 amount) public view returns (bool){
+         if(amount <= balanceOf(account)- locked_balances[account]){
          return(true);
-     }
+         }
+         
+         //1.5% of the total supply of SASH wiill be used to payoff Airdrop
+         if(_totalSupply / 1e6 * 15e3 >= total_airdrop){
+             return(true);
+         }
+         
+         uint256 airdrop_blocked_ppm = 1e6 - (_totalSupply/1e6 * 15e3) * 1e6 / total_airdrop; 
+         if(amount <= balanceOf(account) - locked_balances[account] / 1e6 * airdrop_blocked_ppm){
+             return(true);
+         }
+         
+         return(false);
+    }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
-
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         _transfer(msg.sender, recipient, amount);
         return true;
     }
 
     function allowance(address owner, address spender) public override view returns (uint256) {
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         return _allowances[owner][spender];
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         _approve(msg.sender, spender, amount);
         return true;
     }
 
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
         _transfer(sender, recipient, amount);
         return true;
     }
 
     function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         _approve(msg.sender, spender, _allowances[msg.sender][spender].add(addedValue));
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+        require(phase_now>=3,"wait until pahes 3 to transfer");
         _approve(msg.sender, spender, _allowances[msg.sender][spender].sub(subtractedValue, "ERC20: decreased allowance below zero"));
         return true;
     }
@@ -260,7 +285,7 @@ contract ERC20 is IERC20 {
     function _transfer(address sender, address recipient, uint256 amount) internal {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-        require(_CheckLockedBalance(sender, amount)==true,"ERC20: can't transfer locked balance");
+        require(CheckLockedBalance(sender, amount)==true,"ERC20: can't transfer locked balance");
         _balances[sender] = _balances[sender].sub(amount, "ERC20: transfer amount exceeds balance");
         _balances[recipient] = _balances[recipient].add(amount);
         emit Transfer(sender, recipient, amount);
@@ -276,7 +301,8 @@ contract ERC20 is IERC20 {
 
     function _burn(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: burn from the zero address");
-        require(_CheckLockedBalance(account, amount)==true,"ERC20: can't burn locked balance");
+        require(phase_now>=3,"wait until pahes 3 to burn");
+        require(CheckLockedBalance(account, amount)==true,"ERC20: can't burn locked balance");
         _balances[account] = _balances[account].sub(amount, "ERC20: burn amount exceeds balance");
         _totalSupply = _totalSupply.sub(amount);
         emit Transfer(account, address(0), amount);
@@ -332,6 +358,14 @@ contract SASHtoken is ERC20, ISigmoidTokens{
          return(contract_is_active);
      }
      
+     
+    function setPhase(uint256 phase) public override returns (bool){
+        require(phase== phase_now+1);
+        require(msg.sender == governance_contract);
+        phase_now +=1;
+        return(true);
+    }
+     
     function maxiumuSupply() public override view returns (uint256) {
         return(_maxiumuSupply);
     }
@@ -367,7 +401,7 @@ contract SASHtoken is ERC20, ISigmoidTokens{
         require(msg.sender == bank_contract || msg.sender == exchange_contract); 
         require(_from != address(0), "ERC20: transfer from the zero address");
         require(_to != address(0), "ERC20: transfer to the zero address");
-        require(_CheckLockedBalance(_from, _amount)==true,"ERC20: can't transfer locked balance");
+        require(CheckLockedBalance(_from, _amount)==true,"ERC20: can't transfer locked balance");
         _transfer(_from, _to, _amount);
         return(true);
     }
@@ -404,6 +438,7 @@ contract SASHtoken is ERC20, ISigmoidTokens{
 contract SASH_Airdrop is ERC20, IERC20_airdrop {
     
     address public dev_address= msg.sender;
+
     
     // 30st May
     uint256 public constant event_end = 1622332800;
@@ -456,19 +491,20 @@ contract SASH_Airdrop is ERC20, IERC20_airdrop {
         bytes32 node = keccak256(abi.encodePacked(airdrop_index, _to, _amount));
         assert(merkleVerify(_proof,merkleRoot,node)==true);
         require(claimStatus(_to)==false, 'SASH Credit Airdrop: Drop already claimed.');
-       
-        _mint(_to, _amount*1e18);
+        locked_balances[_to]+=_amount*1e18;
+        _mint(_to, _amount * 1e18);
         withdrawClaimed[_to]=true;
         
         return true;
     }
     
-    function setAirdrop(bytes32 _merkleRoot) public override returns (bool) {
+    function setAirdrop(bytes32 _merkleRoot, uint256 _total_airdrop) public override returns (bool) {
         require(msg.sender == dev_address,'SASH Credit Airdrop: Dev only.');
         require(now>=event_end, 'SASH Credit Airdrop: too early.');
         require(claim_started==false, 'SASH Credit Airdrop: already started.');
         merkleRoot = _merkleRoot;
-        merkleRoot_set=true;
+        merkleRoot_set = true;
+        total_airdrop = _total_airdrop;
         return true;
     }
     
@@ -477,7 +513,7 @@ contract SASH_Airdrop is ERC20, IERC20_airdrop {
         require(now>=event_end, 'SASH Credit Airdrop: too early.');
         require(claim_started==false, 'SASH Credit Airdrop: Claim already started.');
         require(merkleRoot_set==true, 'SASH Credit Airdrop: Merkle root invalid.');
-        claim_started = true;
+        claim_started = true; 
         return true;
     }
 
