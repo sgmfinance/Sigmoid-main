@@ -75,7 +75,12 @@ interface IERC659 {
     function activeSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function burnedSupply( uint256 class, uint256 nonce) external view returns (uint256);
     function redeemedSupply(  uint256 class, uint256 nonce) external  view  returns (uint256);
-   
+    
+    function batchActiveSupply( uint256 class ) external view returns (uint256);
+    function batchBurnedSupply( uint256 class ) external view returns (uint256);
+    function batchRedeemedSupply( uint256 class ) external view returns (uint256);
+    function batchTotalSupply( uint256 class ) external view returns (uint256);
+
     function getNonceCreated(uint256 class) external view returns (uint256[] memory);
     function getClassCreated() external view returns (uint256[] memory);
     
@@ -204,7 +209,7 @@ contract SigmoidExchange is ISigmoidExchange{
     address public bond_contract;
     
     bool public contract_is_active;
-    uint256 stampDutyPpm;
+    uint256 stampDutyPpm = 3e4;
     mapping(address=>uint256) auction_deposit;
     
     
@@ -320,20 +325,21 @@ contract SigmoidExchange is ISigmoidExchange{
     
     function _bidTransfer(address _from, address _to, uint256 amount) private returns(bool) {
         
-        if (stampDutyPpm>0){
-            ISigmoidTokens(SASH_contract).bankTransfer (_from, _to, amount);
+        if (stampDutyPpm==0){
+            ISigmoidTokens(SASH_contract).bankTransfer (_from, address(this), amount);
+            auction_deposit[_to]+=amount;
             return(true);
         
         }
         
         else{ 
             uint256 stampDutySize = amount/1e6*stampDutyPpm;
-            ISigmoidTokens(SASH_contract).bankTransfer (_from, address(this), amount);
-            auction_deposit[_to]+=amount-stampDutySize;
+            ISigmoidTokens(SASH_contract).bankTransfer (_from, _to, amount-stampDutySize);
+            ISigmoidTokens(SASH_contract).bankTransfer (_from, dev_address, stampDutySize);
             return(true);
         }
     }
-        
+    
     function getAuction(uint256 indexStart, uint256 indexEnd) view public returns(AUCTION[] memory){
         require(indexStart<=indexEnd);
         if(indexEnd>idToCatalogue.length-1){
