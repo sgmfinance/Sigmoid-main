@@ -298,7 +298,14 @@ contract ERC20 is IERC20 {
         _balances[account] = _balances[account].add(amount);
         emit Transfer(address(0), account, amount);
     }
+    
+    function _mintAirdrop(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: mint to the zero address");
 
+        _balances[account] = _balances[account].add(amount);
+        emit Transfer(address(0), account, amount);
+    }
+    
     function _burn(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: burn from the zero address");
         require(phase_now>=3,"wait until pahes 3 to burn");
@@ -492,7 +499,7 @@ contract SASH_Airdrop is ERC20, IERC20_airdrop {
         assert(merkleVerify(_proof,merkleRoot,node)==true);
         require(claimStatus(_to)==false, 'SASH Credit Airdrop: Drop already claimed.');
         locked_balances[_to]+=_amount*1e18;
-        _mint(_to, _amount * 1e18);
+        _mintAirdrop(_to, _amount * 1e18);
         withdrawClaimed[_to]=true;
         
         return true;
