@@ -720,7 +720,7 @@ contract SigmoidBank is ISigmoidBank,swap{
         uint256 amount_SGM_transfer;
         
         for (uint i=0; i<_amount.length; i++){
-            if(class!=2 && class!=3){
+            if(class == 0 || class == 1){
                 amount_token_mint+=_amount[i];
             }
             
