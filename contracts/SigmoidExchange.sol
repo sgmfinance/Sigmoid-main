@@ -214,7 +214,8 @@ contract SigmoidExchange is ISigmoidExchange{
     
     
     constructor  (address governance_address) public {
-        governance_contract=governance_address;
+        governance_contract = governance_address;
+        dev_address = msg.sender
         
     }
     
