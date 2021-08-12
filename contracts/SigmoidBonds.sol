@@ -89,6 +89,7 @@ interface IERC659 {
     function getBondSymbol(uint256 class) view external returns (string memory);
     function getBondInfo(uint256 class, uint256 nonce) external view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5,uint256 info6);
     function bondIsRedeemable(uint256 class, uint256 nonce) external view returns (bool);
+    function getBondProgress(uint256 class, uint256 nonce) view external returns (uint256 _now, uint256 _need);
     
  
     function issueBond(address _to, uint256  class, uint256 _amount) external returns(bool);
@@ -311,6 +312,23 @@ contract SigmoidBonds is IERC659, ISigmoidBonds, ERC659data{
         
         return _Symbol[class]; 
     } 
+    
+    function getBondProgress(uint256 class, uint256 nonce) view public override returns (uint256 _now, uint256 _need){
+
+        _now=last_activeSupply[class];
+        _need=last_activeSupply[class];
+        for (uint i=last_bond_redeemed[class]; i<=last_bond_nonce[class]; i++) {
+            _now += _activeSupply[class][i]+_redeemedSupply[class][i];
+            }
+            
+       
+        for (uint i=last_bond_redeemed[class]; i<=nonce; i++) {
+            _need += (_activeSupply[class][i]+_redeemedSupply[class][i])*2;
+            }
+            
+
+    }
+
     
     function getBondInfo(uint256 class, uint256 nonce) public override view returns (string memory BondSymbol, uint256 timestamp, uint256 info2, uint256 info3, uint256 info4, uint256 info5, uint256 info6) {
         BondSymbol=_Symbol[class];
